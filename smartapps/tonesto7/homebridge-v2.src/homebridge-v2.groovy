@@ -141,6 +141,9 @@ def mainPage() {
             href "settingsPage", title: "App Settings", required: false, image: getAppImg("settings")
             label title: "App Label (optional)", description: "Rename this App", defaultValue: app?.name, required: false, image: getAppImg("name_tag")
         }
+        section("Donations:") {
+            href url: textDonateLink(), style: "external", required: false, title: "Donations", description: "Tap to open browser", image: getAppImg("donate")
+        }
         if(devMode()) {
             section("Dev Mode Options") {
                 input "sendViaNgrok", "bool", title: "Communicate with Plugin via Ngrok Http?", defaultValue: false, submitOnChange: true, image: getAppImg("command2")
@@ -271,14 +274,14 @@ def getDeviceCnt() {
 }
 
 def installed() {
-    log.debug "${app.name} | installed() has been called..."
+    log.trace "${app.name} | installed() has been called..."
     state?.isInstalled = true
     state?.installData = [initVer: appVersion(), dt: getDtNow().toString(), updatedDt: "Not Set", showDonation: false, shownChgLog: true]
     initialize()
 }
 
 def updated() {
-    log.debug "${app.name} | updated() has been called..."
+    log.trace "${app.name} | updated() has been called..."
     state?.isInstalled = true
     if(!state?.installData) { state?.installData = [initVer: appVersion(), dt: getDtNow().toString(), updatedDt: getDtNow().toString(), shownDonation: false] }
     unsubscribe()
@@ -303,9 +306,7 @@ private subscribeToEvts() {
     runIn(2, "registerDevices_1")
     runIn(4, "registerDevices_2")
     runIn(6, "registerDevices_3")
-    log.info "--------------------------------------"
     log.info "Starting Device Subscription Process"
-    log.info "--------------------------------------"
     if(settings?.addSecurityDevice) {
         subscribe(location, "alarmSystemStatus", changeHandler)
     }
@@ -759,21 +760,15 @@ def deviceCapabilityList(device) {
         }
         if(remTemp) { items?.remove("Temperature Measurement") }
     }
-    if(settings?.removeBattery && items["Battery"] && isDeviceInInput('removeBattery', device?.id)) { items?.remove("Battery"); if(showDebugLogs) { log.debug "Filtering Battery"; } }
-    if(settings?.removeButton && items["Button"] && isDeviceInInput('removeButton', device?.id)) { items?.remove("Button");  if(showDebugLogs) { log.debug "Filtering Button"; } }
-    if(settings?.removeContact && items["Contact Sensor"] && isDeviceInInput('removeContact', device?.id)) { items?.remove("Contact Sensor");  if(showDebugLogs) { log.debug "Filtering Contact"; } }
-    if(settings?.removeEnergy && items["Energy Meter"] && isDeviceInInput('removeEnergy', device?.id)) { items?.remove("Energy Meter");  if(showDebugLogs) { log.debug "Filtering Energy"; } }
-    if(settings?.removeHumidity && items["Relative Humidity Measurement"] && isDeviceInInput('removeHumidity', device?.id)) { items?.remove("Relative Humidity Measurement");  if(showDebugLogs) { log.debug "Filtering Humidity"; } }
-    if(settings?.removeIlluminance && items["Illuminance Measurement"] && isDeviceInInput('removeIlluminance', device?.id)) { items?.remove("Illuminance Measurement");  if(showDebugLogs) { log.debug "Filtering Illuminance"; } }
-    if(settings?.removeLevel && items["Switch Level"] && isDeviceInInput('removeLevel', device?.id)) { items?.remove("Switch Level");  if(showDebugLogs) { log.debug "Filtering Level"; } }
-    if(settings?.removeLock && items["Lock"] && isDeviceInInput('removeLock', device?.id)) { items?.remove("Lock");  if(showDebugLogs) { log.debug "Filtering Lock"; } }
-    if(settings?.removeMotion && items["Motion Sensor"] && isDeviceInInput('removeMotion', device?.id)) { items?.remove("Motion Sensor");  if(showDebugLogs) { log.debug "Filtering Motion"; } }
-    if(settings?.removePower && items["Power Meter"] && isDeviceInInput('removePower', device?.id)) { items?.remove("Power Meter");  if(showDebugLogs) { log.debug "Filtering Power Meter"; } }
-    if(settings?.removePresence && items["Presence Sensor"] && isDeviceInInput('removePresence', device?.id)) { items?.remove("Presence Sensor");  if(showDebugLogs) { log.debug "Filtering Presence"; } }
-    if(settings?.removeSwitch && items["Switch"] && isDeviceInInput('removeSwitch', device?.id)) { items?.remove("Switch");  if(showDebugLogs) { log.debug "Filtering Switch"; } }
-    if(settings?.removeTamper && items["Tamper Alert"] && isDeviceInInput('removeTamper', device?.id)) { items?.remove("Tamper Alert");  if(showDebugLogs) { log.debug "Filtering Tamper"; } }
-    if(settings?.removeTemp && items["Temperature Measurement"] && isDeviceInInput('removeTemp', device?.id)) { items?.remove("Temperature Measurement");  if(showDebugLogs) { log.debug "Filtering Temp"; } }
-    if(settings?.removeValve && items["Valve"] && isDeviceInInput('removeValve', device?.id)) { items?.remove("Valve");  if(showDebugLogs) { log.debug "Filtering Valve"; } }
+    Map caps = [
+        "Battery": "Battery", "Button": "Button", "Contact":"Contact Sensor", "Energy": "Energy Meter", "Humidity": "Relative Humidity Measurement", "Illuminance": "Illuminance Measurement",
+        "Level": "Switch Level", "Lock":"Lock", "Motion": "Motion Sensor", "Power": "Power Meter", "Presence": "Presence Sensor", "Switch": "Switch", "Tamper": "Tamper Alert", "Temp": "Temperature Measurement",
+        "Valve": "Valve"
+    ]
+    caps?.each { k, v->
+        if(settings?."remove${k}" && items[v] && isDeviceInInput("remove${k}", device?.id)) { items?.remove(v); if(showDebugLogs) { log.debug "Filtering Out Capability: (${k})"; } }
+    }
+    log.debug "${device?.displayName} | ${items}"
     return items
 }
 

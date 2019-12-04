@@ -189,7 +189,9 @@ module.exports = class ST_Platform {
         let accessory;
         device.excludedCapabilities = this.excludedCapabilities[device.deviceid] || ["None"];
         this.log.info(`Loading Existing Device (${device.name}) | (${device.deviceid})`);
+        //TODO: Maybe switch to running the device through the Initialization method
         accessory = this.SmartThingsAccessories.loadAccessoryData(cacheDevice, device);
+        // accessory = this.SmartThingsAccessories.configureCharacteristics(cacheDevice);
         this.SmartThingsAccessories.addAccessoryToCache(accessory);
     }
 

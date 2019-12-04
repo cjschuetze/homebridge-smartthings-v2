@@ -38,6 +38,9 @@ module.exports = class ST_Accessories {
         return Object.keys(this.context.deviceData.commands).includes(cmd) || false;
     }
 
+    hasService(uuid) {
+        return this.services.map(s => s.UUID).includes(uuid) || false;
+    }
     hasDeviceFlag(flag) {
         return Object.keys(this.context.deviceData.deviceflags).includes(flag) || false;
     }
@@ -67,8 +70,9 @@ module.exports = class ST_Accessories {
             accessory.hasAttribute = this.hasAttribute.bind(accessory);
             accessory.hasCommand = this.hasCommand.bind(accessory);
             accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
+            accessory.hasService = this.hasService.bind(accessory);
             accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
-            return this.initializeDeviceCharacteristics(accessory);
+            return this.configureCharacteristics(accessory);
         } catch (ex) {
             this.log.error('PopulateAccessory Error:', ex);
             return accessory;
@@ -88,15 +92,17 @@ module.exports = class ST_Accessories {
             accessory.hasAttribute = this.hasAttribute.bind(accessory);
             accessory.hasCommand = this.hasCommand.bind(accessory);
             accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
+            accessory.hasService = this.hasService.bind(accessory);
             accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
-            return this.initializeDeviceCharacteristics(accessory);
+            return this.configureCharacteristics(accessory);
         } catch (err) {
             this.log.error('CreateAccessoryFromHomebridgeCache Error:', err.message, err);
             return accessory;
         }
     }
 
-    initializeDeviceCharacteristics(accessory) {
+    configureCharacteristics(accessory) {
+        this.log.alert(accessory.context.deviceData.name);
         let prevAccessory = accessory;
         for (let index in accessory.context.deviceData.capabilities) {
             if (knownCapabilities.indexOf(index) === -1 && this.platform.unknownCapabilities.indexOf(index) === -1) this.platform.unknownCapabilities.push(index);
@@ -104,37 +110,38 @@ module.exports = class ST_Accessories {
 
         let that = this;
         let deviceGroups = [];
-        let devData = accessory.context.deviceData;
         accessory.reachable = true;
         accessory.context.lastUpdate = new Date();
         accessory
             .getOrAddService(Service.AccessoryInformation)
-            .setCharacteristic(Characteristic.FirmwareRevision, devData.firmwareVersion)
-            .setCharacteristic(Characteristic.Manufacturer, devData.manufacturerName)
-            .setCharacteristic(Characteristic.Model, `${that.myUtils.toTitleCase(devData.modelName)}`)
-            .setCharacteristic(Characteristic.Name, devData.name)
-            .setCharacteristic(Characteristic.SerialNumber, devData.serialNumber)
+            .setCharacteristic(Characteristic.FirmwareRevision, accessory.context.deviceData.firmwareVersion)
+            .setCharacteristic(Characteristic.Manufacturer, accessory.context.deviceData.manufacturerName)
+            .setCharacteristic(Characteristic.Model, `${that.myUtils.toTitleCase(accessory.context.deviceData.modelName)}`)
+            .setCharacteristic(Characteristic.Name, accessory.context.deviceData.name)
+            .setCharacteristic(Characteristic.SerialNumber, accessory.context.deviceData.serialNumber)
             .on('identify', function(paired, callback) {
                 this.log.info("%s - identify", accessory.displayName);
                 callback();
             });
 
+        // console.log(accessory.context.deviceData.name, 'capabilities: ', accessory.context.deviceData.capabilities);
+        //TODO: Add and else check to every capability check or use a device group repository to reference
+
         let isMode = accessory.hasCapability("Mode");
         let isRoutine = accessory.hasCapability("Routine");
         let isFan = (accessory.hasCapability('Fan') || accessory.hasCapability('Fan Light') || accessory.hasCapability('Fan Speed') || accessory.hasCapability('Fan Control') || accessory.hasCommand('setFanSpeed') || accessory.hasCommand('lowSpeed') || accessory.hasAttribute('fanSpeed'));
         let isWindowShade = (accessory.hasCapability('Window Shade') && (accessory.hasCommand('levelOpenClose') || accessory.hasCommand('presetPosition')));
-        let isLight = (accessory.hasCapability('LightBulb') || accessory.hasCapability('Fan Light') || accessory.hasCapability('Bulb') || devData.name.includes('light'));
+        let isLight = (accessory.hasCapability('LightBulb') || accessory.hasCapability('Fan Light') || accessory.hasCapability('Bulb') || accessory.context.deviceData.name.includes('light'));
         let isColorLight = (accessory.hasAttribute('saturation') || accessory.hasAttribute('hue') || accessory.hasAttribute('colorTemperature') || accessory.hasCapability("Color Control"));
         let isSpeaker = accessory.hasCapability('Speaker');
-        let isSonos = (devData.manufacturerName === "Sonos");
+        let isSonos = (accessory.context.deviceData.manufacturerName === "Sonos");
         let isThermostat = (accessory.hasCapability('Thermostat') || accessory.hasCapability('Thermostat Operating State') || accessory.hasAttribute('thermostatOperatingState'));
-        if (devData && accessory.context.deviceData.capabilities) {
-
+        if (accessory.context.deviceData && accessory.context.deviceData.capabilities) {
             if (accessory.hasCapability('Switch Level') && !isSpeaker && !isFan && !isMode && !isRoutine) {
                 if (isWindowShade) {
                     deviceGroups.push("window_shade");
                     accessory = that.device_types.window_shade(accessory);
-                } else if (isLight || devData.commands.setLevel) {
+                } else if (isLight || accessory.context.deviceData.commands.setLevel) {
                     deviceGroups.push("light");
                     accessory = that.device_types.light_bulb(accessory);
                     accessory = that.device_types.light_level(accessory);
@@ -283,8 +290,14 @@ module.exports = class ST_Accessories {
 
             this.log.debug(deviceGroups);
         }
+
+        if (accessory.context.deviceData.name === "Kitchen Motion") {
+            console.log('hasBattery Service:', accessory.hasService(Service.BatteryService.UUID));
+            console.log('prevAccessory:', prevAccessory.context.deviceGroups);
+            console.log('newAccessory:', accessory.context.deviceGroups);
+        }
         accessory = this.removeUnusedServices(prevAccessory, accessory);
-        return this.loadAccessoryData(accessory, devData) || accessory;
+        return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
     }
 
     processDeviceAttributeUpdate(change) {
@@ -530,6 +543,11 @@ module.exports = class ST_Accessories {
 
     getAllAccessoriesFromCache() {
         return this._accessories;
+    }
+
+    clearAccessoryCache() {
+        this.log.alert("CLEARING ACCESSORY CACHE AND FORCING DEVICE RELOAD");
+        this._accessories = {};
     }
 
     addAccessoryToCache(accessory) {
