@@ -170,11 +170,12 @@ module.exports = class ST_Platform {
 
     updateDevice(device) {
         let cachedAccessory = this.SmartThingsAccessories.getAccessoryFromCache(device);
-        let accessory;
         device.excludedCapabilities = this.excludedCapabilities[device.deviceid] || ["None"];
+        cachedAccessory.context.deviceData = device;
         this.log.info(`Loading Existing Device (${device.name}) | (${device.deviceid})`);
-        accessory = this.SmartThingsAccessories.loadAccessoryData(cachedAccessory, device);
-        this.SmartThingsAccessories.addAccessoryToCache(accessory);
+        // cachedAccessory = this.SmartThingsAccessories.loadAccessoryData(cachedAccessory, device);
+        cachedAccessory = this.SmartThingsAccessories.configureCharacteristics(cachedAccessory);
+        this.SmartThingsAccessories.addAccessoryToCache(cachedAccessory);
     }
 
     removeAccessory(accessory) {

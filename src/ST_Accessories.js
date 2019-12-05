@@ -39,9 +39,22 @@ module.exports = class ST_Accessories {
             accessory.context.deviceData = deviceData;
             accessory.context.name = deviceData.name;
             accessory.context.deviceid = deviceData.deviceid;
+            // Binds the various functions to the accessory object
+            // accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
+            // accessory.getOrAddService = this.getOrAddService.bind(accessory);
+            // accessory.getOrAddCharacteristic = this.getOrAddCharacteristic.bind(accessory);
+            // accessory.hasCapability = this.hasCapability.bind(accessory);
+            // accessory.hasAttribute = this.hasAttribute.bind(accessory);
+            // accessory.hasCommand = this.hasCommand.bind(accessory);
+            // accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
+            // accessory.hasService = this.hasService.bind(accessory);
+            // accessory.hasCharacteristic = this.hasCharacteristic.bind(accessory);
+            // accessory.removeThisService = this.removeThisService.bind(accessory);
+            // accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
+            // accessory.updateCharacteristicVal = this.updateCharacteristicVal.bind(accessory);
             return this.configureCharacteristics(accessory);
         } catch (ex) {
-            this.log.error('PopulateAccessory Error:', ex);
+            this.log.error('PopulateAccessory Error:' + ex);
             return accessory;
         }
     }
@@ -53,6 +66,19 @@ module.exports = class ST_Accessories {
             this.log.debug(`Initializing Cached Device ${deviceid}`);
             accessory.deviceid = deviceid;
             accessory.name = name;
+            // // Binds the various functions to the accessory object
+            // accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
+            // accessory.getOrAddService = this.getOrAddService.bind(accessory);
+            // accessory.getOrAddCharacteristic = this.getOrAddCharacteristic.bind(accessory);
+            // accessory.hasCapability = this.hasCapability.bind(accessory);
+            // accessory.hasAttribute = this.hasAttribute.bind(accessory);
+            // accessory.hasCommand = this.hasCommand.bind(accessory);
+            // accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
+            // accessory.hasService = this.hasService.bind(accessory);
+            // accessory.hasCharacteristic = this.hasCharacteristic.bind(accessory);
+            // accessory.removeThisService = this.removeThisService.bind(accessory);
+            // accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
+            // accessory.updateCharacteristicVal = this.updateCharacteristicVal.bind(accessory);
             return this.configureCharacteristics(accessory);
         } catch (err) {
             this.log.error('CreateAccessoryFromHomebridgeCache Error:', err.message, err);
@@ -62,23 +88,26 @@ module.exports = class ST_Accessories {
 
     configureCharacteristics(accessory) {
         let prevAccessory = accessory;
-
-        // Binds the various functions to the accessory object
         accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
         accessory.getOrAddService = this.getOrAddService.bind(accessory);
+        accessory.getOrAddCharacteristic = this.getOrAddCharacteristic.bind(accessory);
         accessory.hasCapability = this.hasCapability.bind(accessory);
         accessory.hasAttribute = this.hasAttribute.bind(accessory);
         accessory.hasCommand = this.hasCommand.bind(accessory);
         accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
         accessory.hasService = this.hasService.bind(accessory);
+        accessory.hasCharacteristic = this.hasCharacteristic.bind(accessory);
+        accessory.removeCharacteristic = this.removeCharacteristic.bind(accessory);
         accessory.removeThisService = this.removeThisService.bind(accessory);
         accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
+        accessory.updateCharacteristicVal = this.updateCharacteristicVal.bind(accessory);
 
         for (let index in accessory.context.deviceData.capabilities) {
             if (knownCapabilities.indexOf(index) === -1 && this.platform.unknownCapabilities.indexOf(index) === -1) this.platform.unknownCapabilities.push(index);
         }
 
-        let deviceGroups = [];
+        accessory.context.deviceGroups = [];
+        accessory.servicesToKeep = [];
         accessory.reachable = true;
         accessory.context.lastUpdate = new Date();
         accessory
@@ -105,10 +134,8 @@ module.exports = class ST_Accessories {
         if (accessory.context.deviceData && accessory.context.deviceData.capabilities) {
             if (accessory.hasCapability('Switch Level') && !isSpeaker && !isFan && !isMode && !isRoutine) {
                 if (isWindowShade) {
-                    deviceGroups.push("window_shade");
                     accessory = this.deviceTypes.window_shade(accessory);
                 } else if (isLight || accessory.hasCommand('setLevel')) {
-                    deviceGroups.push("light");
                     accessory = this.deviceTypes.light_bulb(accessory);
                     accessory = this.deviceTypes.light_level(accessory);
                     if (isColorLight) {
@@ -118,323 +145,124 @@ module.exports = class ST_Accessories {
             }
 
             if (accessory.hasCapability('Garage Door Control')) {
-                deviceGroups.push("garage_door");
                 accessory = this.deviceTypes.garage_door(accessory);
             }
 
             if (accessory.hasCapability('Lock')) {
-                deviceGroups.push("lock");
                 accessory = this.deviceTypes.lock(accessory);
             }
 
             if (accessory.hasCapability('Valve')) {
-                deviceGroups.push("valve");
                 accessory = this.deviceTypes.valve(accessory);
             }
 
             // GENERIC SPEAKER DEVICE
             if (isSpeaker) {
-                deviceGroups.push("speaker");
                 accessory = this.deviceTypes.speaker_device(accessory);
             }
 
             //Handles Standalone Fan with no levels
-            if (isFan && (deviceGroups.length < 1 || accessory.hasCapability('Fan Light'))) {
-                deviceGroups.push("fan");
+            if (isFan && (accessory.context.deviceGroups.length < 1 || accessory.hasCapability('Fan Light'))) {
                 accessory = this.deviceTypes.fan(accessory);
             }
 
             if (isMode) {
-                deviceGroups.push("mode");
                 accessory = this.deviceTypes.virtual_mode(accessory);
             }
 
             if (isRoutine) {
-                deviceGroups.push("routine");
                 accessory = this.deviceTypes.virtual_routine(accessory);
             }
 
             if (accessory.hasCapability("Button")) {
-                deviceGroups.push("button");
                 accessory = this.deviceTypes.button(accessory);
             }
 
             // This should catch the remaining switch devices that are specially defined
-            if (accessory.hasCapability("Switch") && isLight && deviceGroups.length < 1) {
-                deviceGroups.push("light");
+            if (accessory.hasCapability("Switch") && isLight && accessory.context.deviceGroups.length < 1) {
                 accessory = this.deviceTypes.light_bulb(accessory);
             }
 
-            if (accessory.hasCapability('Switch') && !isLight && deviceGroups.length < 1) {
-                deviceGroups.push("switch");
+            if (accessory.hasCapability('Switch') && !isLight && accessory.context.deviceGroups.length < 1) {
                 accessory = this.deviceTypes.switch_device(accessory);
             }
 
             // Smoke Detectors
             if (accessory.hasCapability('Smoke Detector') && accessory.hasAttribute('smoke')) {
-                deviceGroups.push("smoke_detector");
                 accessory = this.deviceTypes.smoke_detector(accessory);
             }
 
             if (accessory.hasCapability("Carbon Monoxide Detector") && accessory.hasAttribute('carbonMonoxide')) {
-                deviceGroups.push("carbon_monoxide_detector");
                 accessory = this.deviceTypes.carbon_monoxide(accessory);
             }
 
             if (accessory.hasCapability("Carbon Dioxide Measurement") && accessory.hasAttribute('carbonDioxideMeasurement')) {
-                deviceGroups.push("carbon_dioxide_measure");
-                accessory = this.deviceTypes.carbon_dioxide(accessory);
+                accessory = this.deviceTypes.carbon_dioxide(accessory, Service.CarbonDioxideSensor);
             }
 
             if (accessory.hasCapability('Motion Sensor')) {
-                deviceGroups.push("motion_sensor");
                 accessory = this.deviceTypes.motion_sensor(accessory);
             }
 
             if (accessory.hasCapability("Water Sensor")) {
-                deviceGroups.push("water_sensor");
                 accessory = this.deviceTypes.water_sensor(accessory);
             }
             if (accessory.hasCapability("Presence Sensor")) {
-                deviceGroups.push("presence_sensor");
                 accessory = this.deviceTypes.presence_sensor(accessory);
             }
 
             if (accessory.hasCapability("Relative Humidity Measurement") && !isThermostat) {
-                deviceGroups.push("humidity_sensor");
                 accessory = this.deviceTypes.humidity_sensor(accessory);
             }
 
             if (accessory.hasCapability("Temperature Measurement") && !isThermostat) {
-                deviceGroups.push("temp_sensor");
                 accessory = this.deviceTypes.temperature_sensor(accessory);
             }
 
             if (accessory.hasCapability("Illuminance Measurement")) {
-                deviceGroups.push("illuminance_sensor");
                 accessory = this.deviceTypes.illuminance_sensor(accessory);
             }
 
             if (accessory.hasCapability('Contact Sensor') && !accessory.hasCapability('Garage Door Control')) {
-                deviceGroups.push("contact_sensor");
                 accessory = this.deviceTypes.contact_sensor(accessory);
             }
 
             if (accessory.hasCapability("Battery")) {
-                deviceGroups.push("battery_level");
-                accessory = this.deviceTypes.battery(accessory);
+                accessory = this.deviceTypes.battery(accessory, Service.BatteryService);
             }
 
-            if (accessory.hasCapability('Energy Meter') && !accessory.hasCapability('Switch') && deviceGroups.length < 1) {
-                deviceGroups.push("energy_meter");
+            if (accessory.hasCapability('Energy Meter') && !accessory.hasCapability('Switch') && accessory.context.deviceGroups.length < 1) {
                 accessory = this.deviceTypes.energy_meter(accessory);
             }
 
-            if (accessory.hasCapability('Power Meter') && !accessory.hasCapability('Switch') && deviceGroups.length < 1) {
-                deviceGroups.push("power_meter");
+            if (accessory.hasCapability('Power Meter') && !accessory.hasCapability('Switch') && accessory.context.deviceGroups.length < 1) {
                 accessory = this.deviceTypes.power_meter(accessory);
             }
 
             // Thermostat
             if (isThermostat) {
-                deviceGroups.push("thermostat");
                 accessory = this.deviceTypes.thermostat(accessory);
             }
 
             // Alarm System Control/Status
             if (accessory.hasAttribute("alarmSystemStatus")) {
-                deviceGroups.push("alarm");
-                accessory = this.deviceTypes.alarm_system(accessory);
+                accessory = this.deviceTypes.alarm_system(accessory, Service.SecuritySystem);
             }
 
             // Sonos Speakers
-            if (isSonos && deviceGroups.length < 1) {
-                deviceGroups.push("sonos_speaker");
+            if (isSonos && accessory.context.deviceGroups.length < 1) {
                 accessory = this.deviceTypes.sonos_speaker(accessory);
             }
-            accessory.context.deviceGroups = deviceGroups;
 
-            this.log.debug(deviceGroups);
+            this.log.debug(accessory.context.deviceGroups);
         }
-
-        // if (accessory.context.deviceData.name === "Kitchen Motion") {
-        //     console.log('hasBattery Service:', accessory.hasService(Service.BatteryService.UUID));
-        //     console.log('prevAccessory:', prevAccessory.context.deviceGroups);
-        //     console.log('newAccessory:', accessory.context.deviceGroups);
-        // }
-        // accessory = this.removeUnusedServices(prevAccessory, accessory);
+        accessory = this.removeUnusedServices(prevAccessory, accessory);
         return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
     }
 
-    //TODO: Convert this to identify the type to use on configure and check for services and create or remove them on device refresh.
-    detectDeviceType(accessory) {
-        let inGroup = false;
-        let isMode = accessory.hasCapability("Mode");
-        let isRoutine = accessory.hasCapability("Routine");
-        let isFan = (accessory.hasCapability('Fan') || accessory.hasCapability('Fan Light') || accessory.hasCapability('Fan Speed') || accessory.hasCapability('Fan Control') || accessory.hasCommand('setFanSpeed') || accessory.hasCommand('lowSpeed') || accessory.hasAttribute('fanSpeed'));
-        let isWindowShade = (accessory.hasCapability('Window Shade') && (accessory.hasCommand('levelOpenClose') || accessory.hasCommand('presetPosition')));
-        let isLight = (accessory.hasCapability('LightBulb') || accessory.hasCapability('Fan Light') || accessory.hasCapability('Bulb') || accessory.context.deviceData.name.includes('light'));
-        let isColorLight = (accessory.hasAttribute('saturation') || accessory.hasAttribute('hue') || accessory.hasAttribute('colorTemperature') || accessory.hasCapability("Color Control"));
-        let isSpeaker = accessory.hasCapability('Speaker');
-        let isSonos = (accessory.context.deviceData.manufacturerName === "Sonos");
-        let isThermostat = (accessory.hasCapability('Thermostat') || accessory.hasCapability('Thermostat Operating State') || accessory.hasAttribute('thermostatOperatingState'));
-        if (accessory.context.deviceData && accessory.context.deviceData.capabilities) {
-            if (accessory.hasCapability('Switch Level') && !isSpeaker && !isFan && !isMode && !isRoutine) {
-                if (isWindowShade) {
-                    deviceGroups.push("window_shade");
-                    accessory = this.deviceTypes.window_shade(accessory);
-                } else if (isLight || accessory.hasCommand('setLevel')) {
-                    deviceGroups.push("light");
-                    accessory = this.deviceTypes.light_bulb(accessory);
-                    accessory = this.deviceTypes.light_level(accessory);
-                    if (isColorLight) {
-                        accessory = this.deviceTypes.light_color(accessory);
-                    }
-                }
-            }
-
-            if (accessory.hasCapability('Garage Door Control')) {
-                deviceGroups.push("garage_door");
-                accessory = this.deviceTypes.garage_door(accessory);
-            }
-
-            if (accessory.hasCapability('Lock')) {
-                deviceGroups.push("lock");
-                accessory = this.deviceTypes.lock(accessory);
-            }
-
-            if (accessory.hasCapability('Valve')) {
-                deviceGroups.push("valve");
-                accessory = this.deviceTypes.valve(accessory);
-            }
-
-            // GENERIC SPEAKER DEVICE
-            if (isSpeaker) {
-                deviceGroups.push("speaker");
-                accessory = this.deviceTypes.speaker_device(accessory);
-            }
-
-            //Handles Standalone Fan with no levels
-            if (isFan && (deviceGroups.length < 1 || accessory.hasCapability('Fan Light'))) {
-                deviceGroups.push("fan");
-                accessory = this.deviceTypes.fan(accessory);
-            }
-
-            if (isMode) {
-                deviceGroups.push("mode");
-                accessory = this.deviceTypes.virtual_mode(accessory);
-            }
-
-            if (isRoutine) {
-                deviceGroups.push("routine");
-                accessory = this.deviceTypes.virtual_routine(accessory);
-            }
-
-            if (accessory.hasCapability("Button")) {
-                deviceGroups.push("button");
-                accessory = this.deviceTypes.button(accessory);
-            }
-
-            // This should catch the remaining switch devices that are specially defined
-            if (accessory.hasCapability("Switch") && isLight && deviceGroups.length < 1) {
-                deviceGroups.push("light");
-                accessory = this.deviceTypes.light_bulb(accessory);
-            }
-
-            if (accessory.hasCapability('Switch') && !isLight && deviceGroups.length < 1) {
-                deviceGroups.push("switch");
-                accessory = this.deviceTypes.switch_device(accessory);
-            }
-
-            // Smoke Detectors
-            if (accessory.hasCapability('Smoke Detector') && accessory.hasAttribute('smoke')) {
-                deviceGroups.push("smoke_detector");
-                accessory = this.deviceTypes.smoke_detector(accessory);
-            }
-
-            if (accessory.hasCapability("Carbon Monoxide Detector") && accessory.hasAttribute('carbonMonoxide')) {
-                deviceGroups.push("carbon_monoxide_detector");
-                accessory = this.deviceTypes.carbon_monoxide(accessory);
-            }
-
-            if (accessory.hasCapability("Carbon Dioxide Measurement") && accessory.hasAttribute('carbonDioxideMeasurement')) {
-                deviceGroups.push("carbon_dioxide_measure");
-                accessory = this.deviceTypes.carbon_dioxide(accessory);
-            }
-
-            if (accessory.hasCapability('Motion Sensor')) {
-                deviceGroups.push("motion_sensor");
-                accessory = this.deviceTypes.motion_sensor(accessory);
-            }
-
-            if (accessory.hasCapability("Water Sensor")) {
-                deviceGroups.push("water_sensor");
-                accessory = this.deviceTypes.water_sensor(accessory);
-            }
-            if (accessory.hasCapability("Presence Sensor")) {
-                deviceGroups.push("presence_sensor");
-                accessory = this.deviceTypes.presence_sensor(accessory);
-            }
-
-            if (accessory.hasCapability("Relative Humidity Measurement") && !isThermostat) {
-                deviceGroups.push("humidity_sensor");
-                accessory = this.deviceTypes.humidity_sensor(accessory);
-            }
-
-            if (accessory.hasCapability("Temperature Measurement") && !isThermostat) {
-                deviceGroups.push("temp_sensor");
-                accessory = this.deviceTypes.temperature_sensor(accessory);
-            }
-
-            if (accessory.hasCapability("Illuminance Measurement")) {
-                deviceGroups.push("illuminance_sensor");
-                accessory = this.deviceTypes.illuminance_sensor(accessory);
-            }
-
-            if (accessory.hasCapability('Contact Sensor') && !accessory.hasCapability('Garage Door Control')) {
-                deviceGroups.push("contact_sensor");
-                accessory = this.deviceTypes.contact_sensor(accessory);
-            }
-
-            if (accessory.hasCapability("Battery")) {
-                deviceGroups.push("battery_level");
-                accessory = this.deviceTypes.battery(accessory);
-            }
-
-            if (accessory.hasCapability('Energy Meter') && !accessory.hasCapability('Switch') && deviceGroups.length < 1) {
-                deviceGroups.push("energy_meter");
-                accessory = this.deviceTypes.energy_meter(accessory);
-            }
-
-            if (accessory.hasCapability('Power Meter') && !accessory.hasCapability('Switch') && deviceGroups.length < 1) {
-                deviceGroups.push("power_meter");
-                accessory = this.deviceTypes.power_meter(accessory);
-            }
-
-            // Thermostat
-            if (isThermostat) {
-                deviceGroups.push("thermostat");
-                accessory = this.deviceTypes.thermostat(accessory);
-            }
-
-            // Alarm System Control/Status
-            if (accessory.hasAttribute("alarmSystemStatus")) {
-                deviceGroups.push("alarm");
-                accessory = this.deviceTypes.alarm_system(accessory);
-            }
-
-            // Sonos Speakers
-            if (isSonos && deviceGroups.length < 1) {
-                deviceGroups.push("sonos_speaker");
-                accessory = this.deviceTypes.sonos_speaker(accessory);
-            }
-            accessory.context.deviceGroups = deviceGroups;
-
-            this.log.debug(deviceGroups);
-        }
-    }
 
     loadAccessoryData(accessory, deviceData) {
+        //TODO: scan the results returned by detection and add remove services and characteristics using the devicetypes
         let that = this;
         if (deviceData !== undefined) {
             this.log.debug("Setting device data from existing data");
@@ -559,6 +387,8 @@ module.exports = class ST_Accessories {
                 } else {
                     return Math.round(val);
                 }
+            case "batteryStatus":
+                return (val === "USB Cable") ? Characteristic.ChargingState.CHARGING : Characteristic.ChargingState.NOT_CHARGING;
             case "hue":
                 return Math.round(val * 3.6);
             case "colorTemperature":
@@ -630,8 +460,17 @@ module.exports = class ST_Accessories {
         return Object.keys(this.context.deviceData.commands).includes(cmd) || false;
     }
 
-    hasService(uuid) {
-        return this.services.map(s => s.UUID).includes(uuid) || false;
+    hasService(service) {
+        return this.services.map(s => s.UUID).includes(service.UUID) || false;
+    }
+
+    hasCharacteristic(svc, char) {
+        let s = this.getService(svc) || undefined;
+        return (s && s.getCharacteristic(char) !== undefined) || false;
+    }
+
+    updateCharacteristicVal(svc, char, val) {
+        this.getOrAddService(svc).setCharacteristic(char, val);
     }
 
     removeThisService(uuid) {
@@ -688,6 +527,11 @@ module.exports = class ST_Accessories {
             return undefined;
         }
         return this._attributeLookup[attr][devid] || undefined;
+    }
+
+    removeAttributeStoreItem(attr, devid) {
+        if (!this._attributeLookup[attr] || !this._attributeLookup[attr][devid]) return;
+        delete this._attributeLookup[attr][devid];
     }
 
     getDeviceAttributeValueFromCache(device, attr) {
