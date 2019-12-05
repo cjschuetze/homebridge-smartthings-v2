@@ -15,7 +15,9 @@ const {
     webApp = express();
 
 var PlatformAccessory;
+
 // TODO: Verify/fix the removal of unused services from accessories where there Capabilities change.
+
 module.exports = class ST_Platform {
     constructor(log, config, api) {
         this.config = config;
@@ -49,9 +51,6 @@ module.exports = class ST_Platform {
         this.local_hub_ip = undefined;
         this.myUtils = new myUtils(this);
         this.configItems = this.getConfigItems();
-
-        this.deviceCache = {};
-        this.attributeLookup = {};
         this.knownCapabilities = knownCapabilities;
         this.unknownCapabilities = [];
         this.client = new SmartThingsClient(this);
@@ -87,21 +86,6 @@ module.exports = class ST_Platform {
             direct_ip: this.config.direct_ip || this.myUtils.getIPAddress(),
             debug: (this.config.debug === true)
         };
-    }
-
-    getDeviceCache() {
-        return this.deviceCache || {};
-    }
-    getDeviceCacheItem(devid) {
-        return this.deviceCache[devid] || undefined;
-    }
-
-    updDeviceCacheItem(devid, data) {
-        this.deviceCache[devid] = data;
-    }
-
-    remDeviceCacheItem(devid) {
-        delete this.deviceCache[devid];
     }
 
     didFinishLaunching() {
@@ -185,13 +169,11 @@ module.exports = class ST_Platform {
     }
 
     updateDevice(device) {
-        let cacheDevice = this.SmartThingsAccessories.getAccessoryFromCache(device);
+        let cachedAccessory = this.SmartThingsAccessories.getAccessoryFromCache(device);
         let accessory;
         device.excludedCapabilities = this.excludedCapabilities[device.deviceid] || ["None"];
         this.log.info(`Loading Existing Device (${device.name}) | (${device.deviceid})`);
-        //TODO: Maybe switch to running the device through the Initialization method
-        accessory = this.SmartThingsAccessories.loadAccessoryData(cacheDevice, device);
-        // accessory = this.SmartThingsAccessories.configureCharacteristics(cacheDevice);
+        accessory = this.SmartThingsAccessories.loadAccessoryData(cachedAccessory, device);
         this.SmartThingsAccessories.addAccessoryToCache(accessory);
     }
 
@@ -204,7 +186,7 @@ module.exports = class ST_Platform {
 
     configureAccessory(accessory) {
         this.log.info(`Configure Cached Accessory: ${accessory.displayName}, UUID: ${accessory.UUID}`);
-        let cachedAccessory = this.SmartThingsAccessories.CreateAccessoryFromHomebridgeCache(accessory, this);
+        let cachedAccessory = this.SmartThingsAccessories.CreateAccessoryFromCache(accessory);
         this.SmartThingsAccessories.addAccessoryToCache(cachedAccessory);
     }
 

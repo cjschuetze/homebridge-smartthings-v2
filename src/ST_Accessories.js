@@ -24,31 +24,6 @@ module.exports = class ST_Accessories {
         this._attributeLookup = {};
     }
 
-    hasCapability(obj) {
-        let keys = Object.keys(this.context.deviceData.capabilities);
-        if (keys.includes(obj) || keys.includes(obj.toString().replace(/\s/g, ""))) return true;
-        return false;
-    }
-
-    hasAttribute(attr) {
-        return Object.keys(this.context.deviceData.attributes).includes(attr) || false;
-    }
-
-    hasCommand(cmd) {
-        return Object.keys(this.context.deviceData.commands).includes(cmd) || false;
-    }
-
-    hasService(uuid) {
-        return this.services.map(s => s.UUID).includes(uuid) || false;
-    }
-    hasDeviceFlag(flag) {
-        return Object.keys(this.context.deviceData.deviceflags).includes(flag) || false;
-    }
-
-    updateDeviceAttr(attr, val) {
-        this.context.deviceData.attributes[attr] = val;
-    }
-
     PopulateAccessory(accessory, deviceData) {
         try {
             accessory.deviceid = deviceData.deviceid;
@@ -64,14 +39,6 @@ module.exports = class ST_Accessories {
             accessory.context.deviceData = deviceData;
             accessory.context.name = deviceData.name;
             accessory.context.deviceid = deviceData.deviceid;
-            accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
-            accessory.getOrAddService = this.getOrAddService.bind(accessory);
-            accessory.hasCapability = this.hasCapability.bind(accessory);
-            accessory.hasAttribute = this.hasAttribute.bind(accessory);
-            accessory.hasCommand = this.hasCommand.bind(accessory);
-            accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
-            accessory.hasService = this.hasService.bind(accessory);
-            accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
             return this.configureCharacteristics(accessory);
         } catch (ex) {
             this.log.error('PopulateAccessory Error:', ex);
@@ -79,21 +46,13 @@ module.exports = class ST_Accessories {
         }
     }
 
-    CreateAccessoryFromHomebridgeCache(accessory) {
+    CreateAccessoryFromCache(accessory) {
         try {
             let deviceid = accessory.context.deviceid;
             let name = accessory.context.name;
             this.log.debug(`Initializing Cached Device ${deviceid}`);
             accessory.deviceid = deviceid;
             accessory.name = name;
-            accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
-            accessory.getOrAddService = this.getOrAddService.bind(accessory);
-            accessory.hasCapability = this.hasCapability.bind(accessory);
-            accessory.hasAttribute = this.hasAttribute.bind(accessory);
-            accessory.hasCommand = this.hasCommand.bind(accessory);
-            accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
-            accessory.hasService = this.hasService.bind(accessory);
-            accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
             return this.configureCharacteristics(accessory);
         } catch (err) {
             this.log.error('CreateAccessoryFromHomebridgeCache Error:', err.message, err);
@@ -102,8 +61,19 @@ module.exports = class ST_Accessories {
     }
 
     configureCharacteristics(accessory) {
-        this.log.alert(accessory.context.deviceData.name);
         let prevAccessory = accessory;
+
+        // Binds the various functions to the accessory object
+        accessory.context.uuid = accessory.UUID || this.uuid.generate(`smartthings_v2_${accessory.deviceid}`);
+        accessory.getOrAddService = this.getOrAddService.bind(accessory);
+        accessory.hasCapability = this.hasCapability.bind(accessory);
+        accessory.hasAttribute = this.hasAttribute.bind(accessory);
+        accessory.hasCommand = this.hasCommand.bind(accessory);
+        accessory.hasDeviceFlag = this.hasDeviceFlag.bind(accessory);
+        accessory.hasService = this.hasService.bind(accessory);
+        accessory.removeThisService = this.removeThisService.bind(accessory);
+        accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
+
         for (let index in accessory.context.deviceData.capabilities) {
             if (knownCapabilities.indexOf(index) === -1 && this.platform.unknownCapabilities.indexOf(index) === -1) this.platform.unknownCapabilities.push(index);
         }
@@ -123,9 +93,6 @@ module.exports = class ST_Accessories {
                 this.log.info("%s - identify", accessory.displayName);
                 callback();
             });
-
-        // console.log(accessory.context.deviceData.name, 'capabilities: ', accessory.context.deviceData.capabilities);
-        //TODO: Add and else check to every capability check or use a device group repository to reference
 
         let isMode = accessory.hasCapability("Mode");
         let isRoutine = accessory.hasCapability("Routine");
@@ -296,8 +263,42 @@ module.exports = class ST_Accessories {
             console.log('prevAccessory:', prevAccessory.context.deviceGroups);
             console.log('newAccessory:', accessory.context.deviceGroups);
         }
-        accessory = this.removeUnusedServices(prevAccessory, accessory);
+        // accessory = this.removeUnusedServices(prevAccessory, accessory);
         return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
+    }
+
+    loadAccessoryData(accessory, deviceData) {
+        let that = this;
+        if (deviceData !== undefined) {
+            this.log.debug("Setting device data from existing data");
+            accessory.context.deviceData = deviceData;
+            for (let i = 0; i < accessory.services.length; i++) {
+                for (let j = 0; j < accessory.services[i].characteristics.length; j++) {
+                    accessory.services[i].characteristics[j].getValue();
+                }
+            }
+            return accessory;
+        } else {
+            this.log.debug("Fetching Device Data");
+            this.client
+                .getDevice(accessory.deviceid)
+                .then(data => {
+                    if (data === undefined) {
+                        return accessory;
+                    }
+                    accessory.context.deviceData = data;
+                    for (let i = 0; i < accessory.services.length; i++) {
+                        for (let j = 0; j < accessory.services[i].characteristics.length; j++) {
+                            accessory.services[i].characteristics[j].getValue();
+                        }
+                    }
+                    return accessory;
+                })
+                .catch(err => {
+                    that.log.error(`Failed to get Device Data for ${accessory.deviceid}: `, err);
+                    return accessory;
+                });
+        }
     }
 
     processDeviceAttributeUpdate(change) {
@@ -448,40 +449,38 @@ module.exports = class ST_Accessories {
         }
     }
 
-    loadAccessoryData(accessory, deviceData) {
-        let that = this;
-        // return new Promise((resolve, reject) => {
-        if (deviceData !== undefined) {
-            this.log.debug("Setting device data from existing data");
-            accessory.context.deviceData = deviceData;
-            for (let i = 0; i < accessory.services.length; i++) {
-                for (let j = 0; j < accessory.services[i].characteristics.length; j++) {
-                    accessory.services[i].characteristics[j].getValue();
-                }
-            }
-            return accessory;
-        } else {
-            this.log.debug("Fetching Device Data");
-            this.client
-                .getDevice(accessory.deviceid)
-                .then(data => {
-                    if (data === undefined) {
-                        return accessory;
-                    }
-                    accessory.context.deviceData = data;
-                    for (let i = 0; i < accessory.services.length; i++) {
-                        for (let j = 0; j < accessory.services[i].characteristics.length; j++) {
-                            accessory.services[i].characteristics[j].getValue();
-                        }
-                    }
-                    return accessory;
-                })
-                .catch(err => {
-                    that.log.error(`Failed to get Device Data for ${accessory.deviceid}: `, err);
-                    return accessory;
-                });
+    hasCapability(obj) {
+        let keys = Object.keys(this.context.deviceData.capabilities);
+        if (keys.includes(obj) || keys.includes(obj.toString().replace(/\s/g, ""))) return true;
+        return false;
+    }
+
+    hasAttribute(attr) {
+        return Object.keys(this.context.deviceData.attributes).includes(attr) || false;
+    }
+
+    hasCommand(cmd) {
+        return Object.keys(this.context.deviceData.commands).includes(cmd) || false;
+    }
+
+    hasService(uuid) {
+        return this.services.map(s => s.UUID).includes(uuid) || false;
+    }
+
+    removeThisService(uuid) {
+        let remove = this.services.filter(s => (s.UUID === uuid));
+        if (Object.keys(remove).length) {
+            this.log.info('removeServices:', remove);
         }
-        // });
+        remove.forEach(s => this.removeService(s));
+    }
+
+    hasDeviceFlag(flag) {
+        return Object.keys(this.context.deviceData.deviceflags).includes(flag) || false;
+    }
+
+    updateDeviceAttr(attr, val) {
+        this.context.deviceData.attributes[attr] = val;
     }
 
     getOrAddService(svc) {
