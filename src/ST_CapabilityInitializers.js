@@ -1,8 +1,7 @@
-// const debounce = require('debounce-promise');
-var Service, Characteristic;
+var Characteristic;
 
 module.exports = class DeviceTypes {
-    constructor(accessories, srvc, char) {
+    constructor(accessories, char) {
         this.platform = accessories;
         this.log = accessories.log;
         this.logConfig = accessories.logConfig;
@@ -11,12 +10,9 @@ module.exports = class DeviceTypes {
         this.client = accessories.client;
         this.myUtils = accessories.myUtils;
         this.CommunityTypes = accessories.CommunityTypes;
-        Service = srvc;
         Characteristic = char;
         this.homebridge = accessories.homebridge;
     }
-
-
 
     /**
      * @description  Adds the Service and Characteristics required for a Alarm System Accessory
@@ -123,30 +119,31 @@ module.exports = class DeviceTypes {
      * @param {*} service
      * @returns
      */
-    button(accessory) {
+    button(accessory, service) {
         let thisChar;
-        let validValues = [];
-        if (typeof accessory.context.deviceData.attributes.supportedButtonValues === "string") {
-            for (const value of JSON.parse(accessory.context.deviceData.attributes.supportedButtonValues)) {
-                switch (value) {
-                    case "pushed":
-                        validValues.push(Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS);
-                        continue;
-                    case "held":
-                        validValues.push(Characteristic.ProgrammableSwitchEvent.LONG_PRESS);
-                        continue;
-                    case "double":
-                        validValues.push(Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS);
-                        continue;
-                    default:
-                        this.log.info("Button: (" + accessory.name + ") unsupported button value: " + value);
-                }
-            }
-        }
 
         if (!accessory.hasCharacteristic(Service.StatelessProgrammableSwitch, Characteristic.ProgrammableSwitchEvent)) {
+            let validValues = [];
+            if (typeof accessory.context.deviceData.attributes.supportedButtonValues === "string") {
+                for (const value of JSON.parse(accessory.context.deviceData.attributes.supportedButtonValues)) {
+                    switch (value) {
+                        case "pushed":
+                            validValues.push(Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS);
+                            continue;
+                        case "held":
+                            validValues.push(Characteristic.ProgrammableSwitchEvent.LONG_PRESS);
+                            continue;
+                        case "double":
+                            validValues.push(Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS);
+                            continue;
+                        default:
+                            this.log.info("Button: (" + accessory.name + ") unsupported button value: " + value);
+                    }
+                }
+            }
+
             thisChar = accessory
-                .getOrAddService(Service.StatelessProgrammableSwitch)
+                .getOrAddService(service)
                 .getCharacteristic(Characteristic.ProgrammableSwitchEvent)
                 .setProps({
                     validValues
@@ -160,7 +157,7 @@ module.exports = class DeviceTypes {
             thisChar.eventOnlyCharacteristic = false;
             this.accessories.storeCharacteristicItem("button", accessory.context.deviceData.deviceid, thisChar);
         }
-        accessory.context.deviceGroups.push("button");
+        
         return accessory;
     }
 
@@ -368,9 +365,10 @@ module.exports = class DeviceTypes {
         return accessory;
     }
 
-    garage_door(accessory) {
+    garage_door(accessory, service) {
         let thisChar;
-        if (!accessory.hasCharacteristic(Service.GarageDoorOpener, Characteristic.TargetDoorState)) {
+
+        if (!accessory.hasCharacteristic(service, Characteristic.TargetDoorState)) {
             thisChar = accessory
                 .getOrAddService(Service.GarageDoorOpener)
                 .getCharacteristic(Characteristic.TargetDoorState)
@@ -389,7 +387,7 @@ module.exports = class DeviceTypes {
             this.accessories.storeCharacteristicItem("door", accessory.context.deviceData.deviceid, thisChar);
         }
 
-        if (!accessory.hasCharacteristic(Service.GarageDoorOpener, Characteristic.CurrentDoorState)) {
+        if (!accessory.hasCharacteristic(service, Characteristic.CurrentDoorState)) {
             thisChar = accessory
                 .getOrAddService(Service.GarageDoorOpener)
                 .getCharacteristic(Characteristic.CurrentDoorState)
@@ -401,11 +399,13 @@ module.exports = class DeviceTypes {
                 });
             this.accessories.storeCharacteristicItem("door", accessory.context.deviceData.deviceid, thisChar);
         }
-        accessory
+
+        if (!accessory.hasCharacteristic(service, Characteristic.ObstructionDetected)) {
+            accessory
             .getOrAddService(Service.GarageDoorOpener)
             .setCharacteristic(Characteristic.ObstructionDetected, false);
-
-        accessory.context.deviceGroups.push("garage_door");
+        }
+        
         return accessory;
     }
 
@@ -741,20 +741,21 @@ module.exports = class DeviceTypes {
         return accessory;
     }
 
-    switch_device(accessory) {
-        let thisChar;
-        thisChar = accessory
-            .getOrAddService(Service.Switch)
-            .getCharacteristic(Characteristic.On)
-            .on("get", (callback) => {
-                callback(null, this.accessories.attributeStateTransform('switch', accessory.context.deviceData.attributes.switch));
-            })
-            .on("set", (value, callback) => {
-                this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, (value ? "on" : "off"));
-            });
-        this.accessories.storeCharacteristicItem("switch", accessory.context.deviceData.deviceid, thisChar);
+    switch_capability(accessory, service) {
+        if (!accessory.hasCharacteristic(service, Characteristic.On)) {
+            let thisChar;
+            thisChar = accessory
+                .getOrAddService(service)
+                .getCharacteristic(Characteristic.On)
+                .on("get", (callback) => {
+                    callback(null, this.accessories.attributeStateTransform('switch', accessory.context.deviceData.attributes.switch));
+                })
+                .on("set", (value, callback) => {
+                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, (value ? "on" : "off"));
+                });
+            this.accessories.storeCharacteristicItem("switch", accessory.context.deviceData.deviceid, thisChar);
+        }
 
-        accessory.context.deviceGroups.push("switch_device");
         return accessory;
     }
 
@@ -1128,4 +1129,4 @@ module.exports = class DeviceTypes {
         accessory.deviceGroups.push("window_shade");
         return accessory;
     }
-};
+}

@@ -1,5 +1,4 @@
 const {
-    knownCapabilities,
     pluginName,
     platformName,
     platformDesc,
@@ -51,7 +50,6 @@ module.exports = class ST_Platform {
         this.local_hub_ip = undefined;
         this.myUtils = new myUtils(this);
         this.configItems = this.getConfigItems();
-        this.knownCapabilities = knownCapabilities;
         this.unknownCapabilities = [];
         this.client = new SmartThingsClient(this);
         this.SmartThingsAccessories = new SmartThingsAccessories(this);
