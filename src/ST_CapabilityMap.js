@@ -79,9 +79,9 @@ module.exports = class CapabilityMap {
         return Object.keys(capabilityMap);
     }
 
-    initializeCapability(name, accessory, service) {
+    initializeCapability(name, accessory, serviceType) {
         if (capabilityMap[name]) {
-            return capabilityMap[name](accessory, service);
+            return capabilityMap[name](accessory, serviceType);
         }
 
         return accessory;

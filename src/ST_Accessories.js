@@ -114,7 +114,7 @@ module.exports = class ST_Accessories {
             var service = accessory.getOrAddService(serviceType);
 
             for (var capability in accessory.getCapabilities()) {
-                this.capabilityMap.initializeCapability(accessory, service);
+                this.capabilityMap.initializeCapability(accessory, serviceType);
             }
         }
         else {
