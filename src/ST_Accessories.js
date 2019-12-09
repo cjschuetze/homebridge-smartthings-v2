@@ -190,14 +190,22 @@ module.exports = class ST_Accessories {
         if (!this.hasCharacteristic(svc, char)) {
             let c = this.getOrAddService(svc).getCharacteristic(char);
             c.on("get", (callback) => {
-                callback(null, this.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
+                if (attr === 'status' && char === Characteristic.StatusActive) {
+                    callback(null, this.context.deviceData.status === 'Online');
+                } else {
+                    callback(null, this.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
+                }
             });
             if (opts.props && Object.keys(opts.props).length) c.setProps(opts.props);
             if (opts.evtOnly !== undefined) c.eventOnlyCharacteristic = opts.evtOnly;
             c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
         } else {
-            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
+            if (attr === 'status' && char === Characteristic.StatusActive) {
+                this.getOrAddService(svc).getCharacteristic(char).updateValue(this.context.deviceData.status === 'Online');
+            } else {
+                this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
+            }
         }
     }
 
@@ -223,7 +231,6 @@ module.exports = class ST_Accessories {
             if (opts.evtOnly !== undefined) c.eventOnlyCharacteristic = opts.evtOnly;
             c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-
         } else {
             this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
         }
@@ -360,7 +367,6 @@ module.exports = class ST_Accessories {
                         // TODO: Double check if Smartthings can send "auto" as operatingstate. I don't think it can.
                         return Characteristic.CurrentHeatingCoolingState.OFF;
                 }
-
             case "thermostatMode":
                 switch (val) {
                     case "cool":
@@ -415,6 +421,7 @@ module.exports = class ST_Accessories {
     transformCommandValue(attr, val) {
         switch (val) {
             case "valve":
+                return (val === true) ? "open" : "close";
             case "switch":
                 return (val === true) ? "on" : "off";
             case "door":
