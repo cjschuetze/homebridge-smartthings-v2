@@ -114,6 +114,13 @@ module.exports = class ST_Accessories {
             // let service = accessory.getOrAddService(serviceType);
             accessory.getCapabilities().forEach((capability) => {
                 this.capabilityMap.initializeCapability(capability, accessory, serviceType);
+                // TODO: Add service/characteristic cleanup here
+                // .catch(err => {
+                //     this.log.error('getCapabilities Error', err);
+                // })
+                // .then(()=> {
+
+                // });
             });
         } else {
             throw "Unable to determine the service type of " + accessory.deviceid;
