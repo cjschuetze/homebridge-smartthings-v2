@@ -21,11 +21,6 @@ module.exports = class CharacteristicsClass {
         return accessory;
     }
 
-    audio_mute(accessory, service) {
-        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Mute, 'mute');
-    }
-
-
     battery(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.BatteryLevel, 'battery');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
@@ -49,7 +44,8 @@ module.exports = class CharacteristicsClass {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement', { charName: 'Carbon Dioxide Detected' });
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideLevel, 'carbonDioxideMeasurement');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("carbon_dioxide");
         return accessory;
     }
@@ -57,7 +53,8 @@ module.exports = class CharacteristicsClass {
     carbon_monoxide(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide', { charName: 'Carbon Monoxide Detected' });
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("carbon_monoxide");
         return accessory;
     }
@@ -65,7 +62,8 @@ module.exports = class CharacteristicsClass {
     contact_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.ContactSensorState, 'contact');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("contact_sensor");
         return accessory;
     }
@@ -102,10 +100,10 @@ module.exports = class CharacteristicsClass {
     }
 
     humidity_sensor(accessory, service) {
-        accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentRelativeHumidity, 'humidity');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("humidity_sensor");
         return accessory;
     }
@@ -113,7 +111,8 @@ module.exports = class CharacteristicsClass {
     illuminance_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentAmbientLightLevel, 'illuminance');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("illuminance_sensor");
         return accessory;
     }
@@ -169,8 +168,6 @@ module.exports = class CharacteristicsClass {
     presence_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.OccupancyDetected, 'presence');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
         if (accessory.hasCapability('Tamper Alert'))
             accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
@@ -181,8 +178,6 @@ module.exports = class CharacteristicsClass {
     smoke_detector(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.SmokeDetected, 'smoke');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
         if (accessory.hasCapability('Tamper Alert'))
             accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
@@ -190,25 +185,22 @@ module.exports = class CharacteristicsClass {
         return accessory;
     }
 
-    sonos_speaker(accessory, service) {
-        let thisChar;
-        if (accessory.hasCapability('Audio Volume')) {
-            if (!this.hasCharacteristic(service, Characteristic.Volume)) {
-                let sonosVolumeTimeout = null;
-                let lastVolumeWriteValue = null;
-                thisChar = accessory
-                    .getOrAddService(service)
-                    .getCharacteristic(Characteristic.Volume)
-                    .on("get", (callback) => {
-                        this.log.debug("Reading sonos volume " + accessory.context.deviceData.attributes.volume);
-                        callback(null, this.accessories.transformAttributeState('volume', accessory.context.deviceData.attributes.volume));
-                    })
-                    .on("set", (value, callback) => {
+    speaker(accessory, service) {
+        let isSonos = (accessory.context.deviceData.manufacturerName === "Sonos");
+        let lvlAttr = (isSonos || accessory.hasAttribute('volume')) ? 'volume' : accessory.hasAttribute('level') ? 'level' : undefined;
+        if (!this.hasCharacteristic(service, Characteristic.Volume)) {
+            let sonosVolumeTimeout = null;
+            let lastVolumeWriteValue = null;
+            let c = accessory
+                .getOrAddService(service)
+                .getCharacteristic(Characteristic.Volume)
+                .on("get", (callback) => {
+                    callback(null, this.accessories.transformAttributeState(lvlAttr, accessory.context.deviceData.attributes[lvlAttr]) || 0);
+                })
+                .on("set", (value, callback) => {
+                    if (isSonos) {
                         if (value > 0 && value !== lastVolumeWriteValue) {
                             lastVolumeWriteValue = value;
-                            this.log.debug(`Existing volume: ${accessory.context.deviceData.attributes.volume}, set to ${value}`);
-
-                            // Smooth continuous updates to make more responsive
                             sonosVolumeTimeout = this.accessories.clearAndSetTimeout(sonosVolumeTimeout, () => {
                                 this.log.debug(`Existing volume: ${accessory.context.deviceData.attributes.volume}, set to ${lastVolumeWriteValue}`);
                                 this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setVolume", {
@@ -216,52 +208,29 @@ module.exports = class CharacteristicsClass {
                                 });
                             }, 1000);
                         }
-                    });
-
-                this.accessories.storeCharacteristicItem("volume", accessory.context.deviceData.deviceid, thisChar);
-            } else {
-                this.getOrAddService(service).getCharacteristic(Characteristic.Volume).updateValue(this.accessories.transformAttributeState('volume', accessory.context.deviceData.attributes.volume));
-            }
-        }
-
-        accessory.context.deviceGroups.push("sonos_speaker");
-        return accessory;
-    }
-
-    speaker_device(accessory, service) {
-        if (!this.hasCharacteristic(service, Characteristic.Volume)) {
-            let c = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.Volume)
-                .on("get", (callback) => {
-                    callback(null, parseInt(accessory.context.deviceData.attributes.level || accessory.context.deviceData.attributes.volume || 0));
-                })
-                .on("set", (value, callback) => {
+                    }
                     if (value > 0) {
-                        this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setLevel", {
-                            value1: value
+                        this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, this.accessories.transformCommandName(lvlAttr, value), {
+                            value1: this.accessories.transformAttributeState(lvlAttr, value)
                         });
                     }
                 });
             this.accessories.storeCharacteristicItem("volume", accessory.context.deviceData.deviceid, c);
         } else {
-            this.getOrAddService(service).getCharacteristic(Characteristic.Volume).updateValue(parseInt(accessory.context.deviceData.attributes.level || accessory.context.deviceData.attributes.volume || 0));
+            this.getOrAddService(service).getCharacteristic(Characteristic.Volume).updateValue(this.accessories.transformAttributeState(lvlAttr, accessory.context.deviceData.attributes[lvlAttr]) || 0);
         }
+
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Mute, 'mute');
 
         accessory.context.deviceGroups.push("speaker_device");
         return accessory;
     }
 
-    switch_capability(accessory, service) {
+    switch_device(accessory, service) {
         accessory.manageGetSetCharacteristic(accessory, service, Characteristic.On, 'switch');
 
         accessory.context.deviceGroups.push("switch");
         return accessory;
-    }
-
-    tamper_sensor(accessory, service) {
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
     }
 
     temperature_sensor(accessory, service) {
@@ -271,6 +240,8 @@ module.exports = class CharacteristicsClass {
                 maxValue: this.myUtils.tempConversion(90),
             }
         });
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.context.deviceGroups.push("temperature_sensor");
         return accessory;
     }
@@ -480,10 +451,8 @@ module.exports = class CharacteristicsClass {
     valve(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.InUse, 'valve');
         accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Active, 'valve');
-        if (!this.hasCharacteristic(service, Characteristic.ValveType)) {
-            //Defines the valve type (irrigation or generic)
+        if (!this.hasCharacteristic(service, Characteristic.ValveType))
             accessory.getOrAddService(service).setCharacteristic(Characteristic.ValveType, 0);
-        }
 
         accessory.context.deviceGroups.push("valve");
         return accessory;
@@ -543,7 +512,8 @@ module.exports = class CharacteristicsClass {
     water_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.LeakDetected, 'water');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         accessory.deviceGroups.push("window_shade");
         return accessory;
     }

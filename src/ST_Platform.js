@@ -2,7 +2,8 @@ const {
     pluginName,
     platformName,
     platformDesc,
-    pluginVersion
+    pluginVersion,
+    knownCapabilities
 } = require("./libs/Constants"),
     myUtils = require("./libs/MyUtils"),
     SmartThingsClient = require("./ST_Client"),
@@ -44,6 +45,7 @@ module.exports = class ST_Platform {
         this.myUtils = new myUtils(this);
         this.configItems = this.getConfigItems();
         this.unknownCapabilities = [];
+        this.knownCapabilities = knownCapabilities;
         this.client = new SmartThingsClient(this);
         this.SmartThingsAccessories = new SmartThingsAccessories(this);
         this.homebridge.on("didFinishLaunching", this.didFinishLaunching.bind(this));

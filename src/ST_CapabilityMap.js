@@ -19,6 +19,7 @@ module.exports = class CapabilityClass {
     capabilityMap() {
         return {
             "Alarm System Status": this.capInitializers.alarm_system,
+            "Audio Mute": this.capInitializers.audio_mute,
             "Mode": this.capInitializers.virtual_mode,
             "Routine": this.capInitializers.virtual_routine,
             "Button": this.capInitializers.button,
@@ -50,30 +51,33 @@ module.exports = class CapabilityClass {
             "Fan": this.capInitializers.fan,
             "Speaker": this.capInitializers.speaker,
             "Tamper Alert": this.capInitializers.tamper_sensor,
-            // "Door",
-            // "Window",
-            // "Polling",
-            // "Refresh",
-            // "Lock Codes",
-            // "Sensor",
-            // "Actuator",
-            // "Configuration",
-            // "Switch Level",
-            // "Acceleration Sensor",
-            // "Thermostat Cooling Setpoint",
-            // "Thermostat Mode",
-            // "Thermostat Fan Mode",
-            // "Thermostat Heating Setpoint",
-            // "Thermostat Setpoint",
-            // "Fan Speed",
-            // "Fan Control",
-            // "Fan Light",
-
-            // "Alarm",
-            // Sonos Capabilities
-            // "Audio Volume",
-            "Audio Mute"
         };
+
+        //TODO: These aren't really relevant to overall detection of a capability... If necessary they can just be checked for other the primary capability types.
+        // "Switch Level",
+        // "Door",
+        // "Window",
+        // "Polling",
+        // "Refresh",
+        // "Lock Codes",
+        // "Sensor",
+        // "Actuator",
+        // "Configuration",
+
+        // "Acceleration Sensor",
+        // "Thermostat Cooling Setpoint",
+        // "Thermostat Mode",
+        // "Thermostat Fan Mode",
+        // "Thermostat Heating Setpoint",
+        // "Thermostat Setpoint",
+        // "Fan Speed",
+        // "Fan Control",
+        // "Fan Light",
+
+        // "Alarm",
+        // Sonos Capabilities
+        // "Audio Volume",
+
     };
 
     getKnownCapabilities() {
