@@ -1,6 +1,6 @@
 var Characteristic;
 
-module.exports = class DeviceTypes {
+module.exports = class CharacteristicsClass {
     constructor(accessories, char) {
         this.platform = accessories;
         this.log = accessories.log;
@@ -44,14 +44,17 @@ module.exports = class DeviceTypes {
         }
     }
 
+    // eslint-disable-next-line no-unused-vars
     initializeCharacteristic(svc, char) {
 
     }
 
+    // eslint-disable-next-line no-unused-vars
     updateCharacteristic(svc, char) {
 
     }
 
+    // eslint-disable-next-line no-unused-vars
     removeCharacteristic(svc, char) {
 
     }
