@@ -30,21 +30,19 @@ module.exports = class CharacteristicsClass {
         return accessory;
     }
 
-
     button(accessory, service) {
-        accessory.manageGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', (callback) => {
-            // Reset value to force `change` to fire for repeated presses
-            this.value = -1;
-            callback(null, this.accessories.transformAttributeState('button', accessory.context.deviceData.attributes.button));
-        }, {
-            validValues: this.accessories.transformAttributeState('supportedButtonValues', accessory.context.deviceData.attributes.supportedButtonValues)
-        }, false);
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', {
+            evtOnly: false,
+            props: {
+                validValues: this.accessories.transformAttributeState('supportedButtonValues', accessory.context.deviceData.attributes.supportedButtonValues)
+            }
+        });
         accessory.context.deviceGroups.push("button");
         return accessory;
     }
 
     carbon_dioxide(accessory, service) {
-        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement', { charName: 'Carbon Dioxide Detected' });
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideLevel, 'carbonDioxideMeasurement');
 
         if (accessory.hasCapability('Tamper Alert')) {
@@ -56,8 +54,8 @@ module.exports = class CharacteristicsClass {
     }
 
     carbon_monoxide(accessory, service) {
-        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide');
-        if (accessory.hasCapability('Tamper Alert') && !accessory.hasCharacteristic(service, Characteristic.StatusTampered)) {
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide', { charName: 'Carbon Monoxide Detected' });
+        if (accessory.hasCapability('Tamper Alert')) {
             accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
 
@@ -67,7 +65,7 @@ module.exports = class CharacteristicsClass {
 
     contact_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.ContactSensorState, 'contact');
-        if (accessory.hasCapability('Tamper Alert') && !accessory.hasCharacteristic(service, Characteristic.StatusTampered)) {
+        if (accessory.hasCapability('Tamper Alert')) {
             accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
 
@@ -83,157 +81,33 @@ module.exports = class CharacteristicsClass {
     }
 
     fan(accessory, service) {
-        let thisChar;
-        if (!accessory.hasCharacteristic(service, Characteristic.Active)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.Active)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('switch', accessory.context.deviceData.attributes.switch));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, (value ? "on" : "off"));
-                });
-            this.accessories.storeCharacteristicItem("switch", accessory.context.deviceData.deviceid, thisChar);
-        }
-
-        if (!accessory.hasCharacteristic(service, Characteristic.CurrentFanState)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.CurrentFanState)
-                .on("get", (callback) => {
-                    let curState = (accessory.context.deviceData.attributes.switch === "off") ? Characteristic.CurrentFanState.IDLE : Characteristic.CurrentFanState.BLOWING_AIR;
-                    callback(null, curState);
-                });
-            this.accessories.storeCharacteristicItem("switch", accessory.context.deviceData.deviceid, thisChar);
-        }
-        if (!accessory.hasCharacteristic(service, Characteristic.RotationSpeed)) {
-            let spdSteps = 1;
-            if (accessory.hasDeviceFlag('fan_3_spd')) spdSteps = 33;
-            if (accessory.hasDeviceFlag('fan_4_spd')) spdSteps = 25;
-
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.RotationSpeed)
-                .setProps({
-                    minSteps: spdSteps
-                })
-                .on("get", (callback) => {
-                    if (accessory.hasAttribute('level')) {
-                        callback(null, this.accessories.transformAttributeState("level", accessory.context.deviceData.attributes.level));
-                    } else if (accessory.hasAttribute('fanSpeed') && accessory.hasCommand('setFanSpeed')) {
-                        switch (parseInt(accessory.context.deviceData.attributes.fanSpeed)) {
-                            case 0:
-                                callback(null, 0);
-                                break;
-                            case 1:
-                                callback(null, 33);
-                                break;
-                            case 2:
-                                callback(null, 66);
-                                break;
-                            case 3:
-                                callback(null, 100);
-                                break;
-                        }
-                    }
-                })
-                .on("set", (value, callback) => {
-                    if (value >= 0 && value <= 100) {
-                        if (accessory.hasAttribute('level')) {
-                            this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setLevel", {
-                                value1: parseInt(value)
-                            });
-                            accessory.context.deviceData.attributes.level = value;
-                        } else if (accessory.hasAttribute('fanSpeed') && accessory.hasCommand('setFanSpeed')) {
-                            let spd;
-                            if (value === 0) {
-                                spd = 0;
-                            } else if (value < 34) {
-                                spd = 1;
-                            } else if (value < 67) {
-                                spd = 2;
-                            } else {
-                                spd = 3;
-                            }
-                            this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setFanSpeed", {
-                                value1: spd
-                            });
-                            accessory.context.deviceData.attributes.fanSpeed = spd;
-                        }
-                    }
-                });
-            this.accessories.storeCharacteristicItem("level", accessory.context.deviceData.deviceid, thisChar);
-        }
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Active, 'switch');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentFanState, 'switch', { get: { altAttr: "fanState" } });
+        let spdSteps = 1;
+        if (accessory.hasDeviceFlag('fan_3_spd')) spdSteps = 33;
+        if (accessory.hasDeviceFlag('fan_4_spd')) spdSteps = 25;
+        let spdAttr = (accessory.hasAttribute('level')) ? "level" : (accessory.hasAttribute('fanSpeed') && accessory.hasCommand('setFanSpeed')) ? 'fanSpeed' : undefined;
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.RotationSpeed, spdAttr, { cmdHasVal: true, props: { minSteps: spdSteps } });
 
         accessory.context.deviceGroups.push("fan");
         return accessory;
     }
 
     garage_door(accessory, service) {
-        let thisChar;
-
-        if (!accessory.hasCharacteristic(service, Characteristic.TargetDoorState)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.TargetDoorState)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('door', accessory.context.deviceData.attributes.door, 'Target Door State'));
-                })
-                .on("set", (value, callback) => {
-                    if (value === Characteristic.TargetDoorState.OPEN || value === 0) {
-                        this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "open");
-                        accessory.context.deviceData.attributes.door = "opening";
-                    } else if (value === Characteristic.TargetDoorState.CLOSED || value === 1) {
-                        this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "close");
-                        accessory.context.deviceData.attributes.door = "closing";
-                    }
-                });
-            this.accessories.storeCharacteristicItem("door", accessory.context.deviceData.deviceid, thisChar);
-        }
-
-        if (!accessory.hasCharacteristic(service, Characteristic.CurrentDoorState)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.CurrentDoorState)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('door', accessory.context.deviceData.attributes.door, 'Current Door State'));
-                })
-                .on("change", (obj) => {
-                    this.log_change('door', 'CurrentDoorState', accessory, obj);
-                });
-            this.accessories.storeCharacteristicItem("door", accessory.context.deviceData.deviceid, thisChar);
-        }
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentDoorState, 'door', { charName: 'Current Door State' });
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.TargetDoorState, 'door', { charName: 'Target Door State' });
 
         if (!accessory.hasCharacteristic(service, Characteristic.ObstructionDetected)) {
-            accessory
-                .getOrAddService(service)
-                .setCharacteristic(Characteristic.ObstructionDetected, false);
+            accessory.getOrAddService(service).setCharacteristic(Characteristic.ObstructionDetected, false);
         }
 
         return accessory;
     }
 
     humidity_sensor(accessory, service) {
-        let thisChar;
-        thisChar = accessory
-            .getOrAddService(service)
-            .getCharacteristic(Characteristic.CurrentRelativeHumidity)
-            .on("get", (callback) => {
-                callback(null, this.accessories.transformAttributeState('humidity', accessory.context.deviceData.attributes.humidity));
-            });
-        this.accessories.storeCharacteristicItem("humidity", accessory.context.deviceData.deviceid, thisChar);
-        if (accessory.hasCapability('Tamper Alert') && !accessory.hasCharacteristic(service, Characteristic.StatusTampered)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.StatusTampered)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('tamper', accessory.context.deviceData.attributes.tamper));
-                })
-                .on("change", (obj) => {
-                    this.log_change('tamper', 'StatusTampered', accessory, obj);
-                });
-            this.accessories.storeCharacteristicItem("tamper", accessory.context.deviceData.deviceid, thisChar);
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentRelativeHumidity, 'humidity');
+        if (accessory.hasCapability('Tamper Alert')) {
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
 
         accessory.context.deviceGroups.push("humidity_sensor");
@@ -241,93 +115,29 @@ module.exports = class CharacteristicsClass {
     }
 
     illuminance_sensor(accessory, service) {
-        let thisChar;
-        thisChar = accessory
-            .getOrAddService(service)
-            .getCharacteristic(Characteristic.CurrentAmbientLightLevel)
-            .on("get", (callback) => {
-                callback(null, this.accessories.transformAttributeState('illuminance', accessory.context.deviceData.attributes.illuminance));
-            });
-        this.accessories.storeCharacteristicItem("illuminance", accessory.context.deviceData.deviceid, thisChar);
-
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentAmbientLightLevel, 'illuminance');
         accessory.context.deviceGroups.push("illuminance_sensor");
         return accessory;
     }
 
     light(accessory, service) {
-        let thisChar;
-        thisChar = accessory
-            .getOrAddService(service)
-            .getCharacteristic(Characteristic.On)
-            .on("get", (callback) => {
-                callback(null, this.accessories.transformAttributeState('switch', accessory.context.deviceData.attributes.switch));
-            })
-            .on("set", (value, callback) => {
-                this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, (value ? "on" : "off"));
-            });
-        this.accessories.storeCharacteristicItem("switch", accessory.context.deviceData.deviceid, thisChar);
-        if (accessory.hasAttribute('level')) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.Brightness)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('level', accessory.context.deviceData.attributes.level));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setLevel", {
-                        value1: value
-                    });
-                });
-            this.accessories.storeCharacteristicItem("level", accessory.context.deviceData.deviceid, thisChar);
-        }
-        if (accessory.hasAttribute('hue')) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.Hue)
-                .setProps({
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.On, 'switch');
+        if (accessory.hasAttribute('level'))
+            accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Brightness, 'level', { cmdHasVal: true });
+        if (accessory.hasAttribute('hue'))
+            accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Hue, 'hue', {
+                cmdHasVal: true,
+                props: {
                     minValue: 1,
                     maxValue: 30000
-                })
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('hue', accessory.context.deviceData.attributes.hue));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setHue", {
-                        value1: Math.round(value / 3.6)
-                    });
-                });
-            this.accessories.storeCharacteristicItem("hue", accessory.context.deviceData.deviceid, thisChar);
-        }
-        if (accessory.hasAttribute('saturation')) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.Saturation)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('saturation', accessory.context.deviceData.attributes.saturation));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setSaturation", {
-                        value1: value
-                    });
-                });
-            this.accessories.storeCharacteristicItem("saturation", accessory.context.deviceData.deviceid, thisChar);
-        }
-        if (accessory.hasAttribute('colorTemperature')) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .getCharacteristic(Characteristic.ColorTemperature)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('colorTemperature', accessory.context.deviceData.attributes.colorTemperature));
-                })
-                .on("set", (value, callback) => {
-                    let temp = this.myUtils.colorTempToK(value);
-                    this.client.sendDeviceCommand(callback, accessory.context.deviceData.deviceid, "setColorTemperature", {
-                        value1: temp
-                    });
-                    accessory.context.deviceData.attributes.colorTemperature = temp;
-                });
-            this.accessories.storeCharacteristicItem("colorTemperature", accessory.context.deviceData.deviceid, thisChar);
-        }
+                }
+            });
+
+        if (accessory.hasAttribute('saturation'))
+            accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Saturation, 'saturation', { cmdHasVal: true });
+
+        if (accessory.hasAttribute('colorTemperature'))
+            accessory.manageGetSetCharacteristic(accessory, service, Characteristic.ColorTemperature, 'colorTemperature', { cmdHasVal: true });
 
         accessory.context.deviceGroups.push("light_bulb");
         return accessory;

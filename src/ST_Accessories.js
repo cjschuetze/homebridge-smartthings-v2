@@ -80,8 +80,7 @@ module.exports = class ST_Accessories {
         accessory.updateCharacteristicVal = this.updateCharacteristicVal.bind(accessory);
         accessory.manageGetCharacteristic = this.manageGetCharacteristic.bind(accessory);
         accessory.manageGetSetCharacteristic = this.manageGetSetCharacteristic.bind(accessory);
-        accessory.func_manageGetCharacteristic = this.func_manageGetCharacteristic.bind(accessory);
-        accessory.func_manageGetSetCharacteristic = this.func_manageGetSetCharacteristic.bind(accessory);
+        accessory.updateCharacteristicProps = this.updateCharacteristicProps.bind(accessory);
     }
 
     configureCharacteristics(accessory) {
@@ -113,7 +112,6 @@ module.exports = class ST_Accessories {
 
         let serviceType = this.serviceTypes.determineServiceType(accessory);
         if (serviceType) {
-            // let service = accessory.getOrAddService(serviceType);
             accessory.getCapabilities().forEach((capability) => {
                 this.capabilityMap.initializeCapability(capability, accessory, serviceType);
                 // TODO: Add service/characteristic cleanup here
@@ -188,37 +186,46 @@ module.exports = class ST_Accessories {
         });
     }
 
-    manageGetCharacteristic(svc, char, attr, getFunc = undefined, props = undefined, evtOnly = undefined) {
+    manageGetCharacteristic(svc, char, attr, opts = {}) {
         if (!this.hasCharacteristic(svc, char)) {
             let c = this.getOrAddService(svc).getCharacteristic(char);
-            c.on("get", getFunc ? getFunc : (callback) => {
-                callback(null, this.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            c.on("get", (callback) => {
+                callback(null, this.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
             });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly !== undefined) c.eventOnlyCharacteristic = evtOnly;
+            if (opts.props && Object.keys(opts.props).length) c.setProps(opts.props);
+            if (opts.evtOnly !== undefined) c.eventOnlyCharacteristic = opts.evtOnly;
             c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
         } else {
-            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
         }
     }
 
-    manageGetSetCharacteristic(svc, char, attr, getFunc = undefined, setFunc = undefined, props = undefined, evtOnly = undefined) {
+    manageGetSetCharacteristic(svc, char, attr, opts = {}) {
         if (!this.hasCharacteristic(svc, char)) {
             let c = this.getOrAddService(svc).getCharacteristic(char);
-            c.on("get", (getFunc !== undefined) ? getFunc : (callback) => {
-                callback(null, this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            c.on("get", (callback) => {
+                callback(null, this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
             });
-            c.on("set", (setFunc !== undefined) ? setFunc : (value, callback) => {
-                this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, this.transformCommandValue(attr, value));
+            c.on("set", (value, callback) => {
+                let cmdName = this.transformCommandName(opts.set.altAttr || attr, value);
+                if (opts.cmdHasVal === true) {
+                    let cVal = this.transformCommandValue(opts.set.altAttr || attr, value);
+                    this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, cmdName, {
+                        value1: cVal
+                    });
+                } else {
+                    this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, cmdName);
+                }
+                if (opts.updAttrVal) this.context.deviceData.attributes[attr] = this.transformAttributeState(opts.set.altAttr || attr, this.context.deviceData.attributes[opts.set.altValAttr || attr], opts.charName || undefined);
             });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly !== undefined) c.eventOnlyCharacteristic = evtOnly;
+            if (opts.props && Object.keys(opts.props).length) c.setProps(opts.props);
+            if (opts.evtOnly !== undefined) c.eventOnlyCharacteristic = opts.evtOnly;
             c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
 
         } else {
-            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(opts.get.altAttr || attr, this.context.deviceData.attributes[opts.get.altValAttr || attr], opts.charName || undefined));
         }
     }
 
@@ -367,8 +374,39 @@ module.exports = class ST_Accessories {
                         return Characteristic.TargetHeatingCoolingState.OFF;
                 }
             case "alarmSystemStatus":
-                return this.myUtils.convertAlarmState(val, true, Characteristic);
+                return this.myUtils.convertAlarmState(val, true);
 
+            default:
+                return val;
+        }
+    }
+
+    transformCommandName(attr, val) {
+        switch (val) {
+            case "valve":
+                return (val === true) ? "open" : "close";
+            case "switch":
+                return (val === true) ? "on" : "off";
+            case "door":
+                if (val === Characteristic.TargetDoorState.OPEN || val === 0) {
+                    return "open";
+                } else {
+                    return "close";
+                }
+            case "hue":
+                return "setHue";
+            case "colorTemperature":
+                return "setColorTemperature";
+            case "lock":
+                return (val === 1 || val === true) ? "lock" : "unlock";
+            case "mute":
+                return (val === "muted") ? "mute" : "unmute";
+            case "alarmSystemStatus":
+                return this.myUtils.convertAlarmState(val);
+            case "fanSpeed":
+                return "setFanSpeed";
+            case "level":
+                return "setLevel";
             default:
                 return val;
         }
@@ -396,6 +434,16 @@ module.exports = class ST_Accessories {
                 return (val === "muted") ? "mute" : "unmute";
             case "alarmSystemStatus":
                 return this.myUtils.convertAlarmState(val, false, Characteristic);
+            case "fanSpeed":
+                if (val === 0) {
+                    return 0;
+                } else if (val < 34) {
+                    return 1;
+                } else if (val < 67) {
+                    return 2;
+                } else {
+                    return 3;
+                }
             default:
                 return val;
         }
@@ -434,6 +482,10 @@ module.exports = class ST_Accessories {
 
     updateCharacteristicVal(svc, char, val) {
         this.getOrAddService(svc).setCharacteristic(char, val);
+    }
+
+    updateCharacteristicProps(svc, char, props) {
+        this.getOrAddService(svc).getCharacteristic(char).setProps(props);
     }
 
     removeThisService(uuid) {

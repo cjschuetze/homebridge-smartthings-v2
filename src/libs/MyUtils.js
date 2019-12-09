@@ -1,5 +1,6 @@
+var Characteristic;
 const {
-    platformName,
+    // platformName,
     // platformDesc,
     packageFile
 } = require("./Constants"),
@@ -13,6 +14,7 @@ module.exports = class MyUtils {
     constructor(platform) {
         this.platform = platform;
         this.client = platform.client;
+        Characteristic = this.Characteristic;
         this.log = platform.log;
         this.homebridge = platform.homebridge;
         this.temperature_unit = platform.temperature_unit;
@@ -21,6 +23,7 @@ module.exports = class MyUtils {
     cleanSpaces(str) {
         return String(str.replace(/ /g, ""));
     }
+
     toTitleCase(str) {
         return str.replace(
             /\w\S*/g,
@@ -112,6 +115,8 @@ module.exports = class MyUtils {
 
     fanSpeedIntToLevel(speedVal) {
         switch (speedVal) {
+            case 0:
+                return 0;
             case 1:
                 return 32;
             case 2:
@@ -135,7 +140,7 @@ module.exports = class MyUtils {
         }
     }
 
-    convertAlarmState(value, valInt = false, Characteristic) {
+    convertAlarmState(value, valInt = false) {
         switch (value) {
             case "stay":
             case "armHome":
@@ -143,46 +148,28 @@ module.exports = class MyUtils {
             case "armhome":
             case "armedhome":
             case 0:
-                return valInt ?
-                    Characteristic.SecuritySystemCurrentState.STAY_ARM :
-                    platformName === "Hubitat" ?
-                    "armHome" :
-                    "stay";
+                return valInt ? Characteristic.SecuritySystemCurrentState.STAY_ARM : "stay";
             case "away":
             case "armaway":
             case "armAway":
             case "armedaway":
             case "armedAway":
             case 1:
-                return valInt ?
-                    Characteristic.SecuritySystemCurrentState.AWAY_ARM :
-                    platformName === "Hubitat" ?
-                    "armAway" :
-                    "away";
+                return valInt ? Characteristic.SecuritySystemCurrentState.AWAY_ARM : "away";
             case "night":
             case "armnight":
             case "armNight":
             case "armednight":
             case 2:
-                return valInt ?
-                    Characteristic.SecuritySystemCurrentState.NIGHT_ARM :
-                    platformName === "Hubitat" ?
-                    "armNight" :
-                    "night";
+                return valInt ? Characteristic.SecuritySystemCurrentState.NIGHT_ARM : "night";
             case "off":
             case "disarm":
             case "disarmed":
             case 3:
-                return valInt ?
-                    Characteristic.SecuritySystemCurrentState.DISARMED :
-                    platformName === "Hubitat" ?
-                    "disarm" :
-                    "off";
+                return valInt ? Characteristic.SecuritySystemCurrentState.DISARMED : "off";
             case "alarm_active":
             case 4:
-                return valInt ?
-                    Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED :
-                    "alarm_active";
+                return valInt ? Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED : "alarm_active";
         }
     }
 
