@@ -40,7 +40,7 @@ module.exports = class ST_Accessories {
             accessory.context.deviceData = deviceData;
             accessory.context.name = deviceData.name;
             accessory.context.deviceid = deviceData.deviceid;
-            initializeAccessory(accessory);
+            this.initializeAccessory(accessory);
             return this.configureCharacteristics(accessory);
         } catch (ex) {
             this.log.error('PopulateAccessory Error:' + ex);
@@ -55,7 +55,7 @@ module.exports = class ST_Accessories {
             this.log.debug(`Initializing Cached Device ${deviceid}`);
             accessory.deviceid = deviceid;
             accessory.name = name;
-            initializeAccessory(accessory);
+            this.initializeAccessory(accessory);
             return this.configureCharacteristics(accessory);
         } catch (err) {
             this.log.error('CreateAccessoryFromHomebridgeCache Error:', err.message, err);
@@ -78,6 +78,8 @@ module.exports = class ST_Accessories {
         accessory.removeThisService = this.removeThisService.bind(accessory);
         accessory.updateDeviceAttr = this.updateDeviceAttr.bind(accessory);
         accessory.updateCharacteristicVal = this.updateCharacteristicVal.bind(accessory);
+        accessory.createGetCharacteristic = this.createGetCharacteristic.bind(accessory);
+        accessory.createGetSetCharacteristic = this.createGetSetCharacteristic.bind(accessory);
     }
 
     configureCharacteristics(accessory) {
@@ -92,7 +94,6 @@ module.exports = class ST_Accessories {
         accessory.reachable = true;
         accessory.context.lastUpdate = new Date();
 
-
         let accessoryInformation = accessory
             .getOrAddService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.FirmwareRevision, accessory.context.deviceData.firmwareVersion)
@@ -100,27 +101,24 @@ module.exports = class ST_Accessories {
             .setCharacteristic(Characteristic.Model, `${this.myUtils.toTitleCase(accessory.context.deviceData.modelName)}`)
             .setCharacteristic(Characteristic.Name, accessory.context.deviceData.name);
 
-        if (!accessoryInformation.listeners("identify") {
+        if (!accessoryInformation.listeners("identify")) {
             accessoryInformation
                 .on('identify', function(paired, callback) {
-                this.log.info("%s - identify", accessory.displayName);
-                callback();
-            });
-        })
+                    this.log.info("%s - identify", accessory.displayName);
+                    callback();
+                });
+        }
 
         let serviceType = this.serviceTypes.determineServiceType(accessory);
-
         if (serviceType) {
-            var service = accessory.getOrAddService(serviceType);
-
-            for (var capability in accessory.getCapabilities()) {
-                this.capabilityMap.initializeCapability(accessory, serviceType);
-            }
-        }
-        else {
+            // let service = accessory.getOrAddService(serviceType);
+            accessory.getCapabilities().forEach((capability) => {
+                this.capabilityMap.initializeCapability(capability, accessory, serviceType);
+            });
+        } else {
             throw "Unable to determine the service type of " + accessory.deviceid;
         }
-        
+
         return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
     }
 
@@ -316,7 +314,7 @@ module.exports = class ST_Accessories {
         return false;
     }
 
-    getCapabilities(obj) {
+    getCapabilities() {
         return Object.keys(this.context.deviceData.capabilities);
     }
 

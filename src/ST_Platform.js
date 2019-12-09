@@ -32,20 +32,13 @@ module.exports = class ST_Platform {
         this.logConfig = this.getLogConfig();
         this.logging = new Logging(this, this.config["name"], this.logConfig);
         this.log = this.logging.getLogger();
-        // this.log.info("Log Info Test");
-        // this.log.debug("Log Debug Test");
-        // this.log.error("Log ERROR Test");
-        // this.log.warn("Log WARN Test");
-        // this.log.notice('Log NOTICE Test');
-        // this.log.alert('Log ALERT Test');
-        // this.log.good('Log GOOD Test');
         this.log.info(`Homebridge Version: ${api.version}`);
         this.log.info(`${platformName} Plugin Version: ${pluginVersion}`);
         this.polling_seconds = config["polling_seconds"] || 3600;
         this.excludedAttributes = this.config["excluded_attributes"] || [];
         this.excludedCapabilities = this.config["excluded_capabilities"] || [];
         this.update_method = this.config["update_method"] || "direct";
-        this.temperature_unit = "F";
+        this.temperature_unit = 'F';
         this.local_commands = false;
         this.local_hub_ip = undefined;
         this.myUtils = new myUtils(this);
@@ -58,6 +51,14 @@ module.exports = class ST_Platform {
             .then((res) => {
                 this.client.sendUpdateStatus(res);
             });
+    }
+
+    setTempUnit(unit) {
+        this.temperature_unit = unit;
+    }
+
+    getTempUnit() {
+        return this.temperature_unit;
     }
 
     getLogConfig() {

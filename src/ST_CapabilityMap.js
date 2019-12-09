@@ -1,81 +1,79 @@
 // const debounce = require('debounce-promise');
-var Service, Characteristic;
-var CapabilityInitializers = require("./ST_CapabilityInitializers");
+var Characteristic;
+const CapabilityInitializers = require("./ST_CapabilityInitializers");
 
-let capabilityMap = {
+const capabilityMap = {
     "Switch": CapabilityInitializers.switch_capability,
-    "Light",
-    "LightBulb",
-    "Bulb",
-    "Color Control",
-    "Door",
-    "Window",
-    "Battery",
-    "Polling",
-    "Lock",
-    "Refresh",
-    "Lock Codes",
-    "Sensor",
-    "Actuator",
-    "Configuration",
-    "Switch Level",
-    "Temperature Measurement",
-    "Motion Sensor",
-    "Color Temperature",
-    "Illuminance Measurement",
-    "Contact Sensor",
-    "Acceleration Sensor",
-    "Door Control",
+    "Light": CapabilityInitializers.light,
+    "LightBulb": CapabilityInitializers.light,
+    "Bulb": CapabilityInitializers.light,
+    "Color Control": CapabilityInitializers.light,
+    // "Door",
+    // "Window",
+    "Battery": CapabilityInitializers.battery,
+    // "Polling",
+    "Lock": CapabilityInitializers.lock,
+    // "Refresh",
+    // "Lock Codes",
+    // "Sensor",
+    // "Actuator",
+    // "Configuration",
+    // "Switch Level",
+    "Temperature Measurement": CapabilityInitializers.temperature_sensor,
+    "Motion Sensor": CapabilityInitializers.motion_sensor,
+    "Color Temperature": CapabilityInitializers.light,
+    "Illuminance Measurement": CapabilityInitializers.illuminance_sensor,
+    "Contact Sensor": CapabilityInitializers.contact_sensor,
+    // "Acceleration Sensor",
+    "Door Control": CapabilityInitializers.garage_door,
     "Garage Door Control": CapabilityInitializers.garage_door,
-    "Relative Humidity Measurement",
-    "Presence Sensor",
-    "Carbon Dioxide Measurement",
-    "Carbon Monoxide Detector",
-    "Water Sensor",
-    "Window Shade",
-    "Valve",
-    "Energy Meter",
-    "Power Meter",
-    "Thermostat",
-    "Thermostat Cooling Setpoint",
-    "Thermostat Mode",
-    "Thermostat Fan Mode",
-    "Thermostat Operating State",
-    "Thermostat Heating Setpoint",
-    "Thermostat Setpoint",
-    "Fan Speed",
-    "Fan Control",
-    "Fan Light",
-    "Fan",
-    "Speaker",
-    "Tamper Alert",
-    "Alarm",
-    "Alarm System Status",
-    "AlarmSystemStatus",
-    "Mode",
-    "Routine",
+    "Relative Humidity Measurement": CapabilityInitializers.humidity_sensor,
+    "Presence Sensor": CapabilityInitializers.presence_sensor,
+    "Carbon Dioxide Measurement": CapabilityInitializers.carbon_dioxide,
+    "Carbon Monoxide Detector": CapabilityInitializers.carbon_monoxide,
+    "Water Sensor": CapabilityInitializers.water_sensor,
+    "Window Shade": CapabilityInitializers.window_shade,
+    "Valve": CapabilityInitializers.valve,
+    "Energy Meter": CapabilityInitializers.energy_meter,
+    "Power Meter": CapabilityInitializers.power_meter,
+    // "Thermostat",
+    // "Thermostat Cooling Setpoint",
+    // "Thermostat Mode",
+    // "Thermostat Fan Mode",
+    // "Thermostat Operating State",
+    // "Thermostat Heating Setpoint",
+    // "Thermostat Setpoint",
+    // "Fan Speed",
+    // "Fan Control",
+    // "Fan Light",
+    "Fan": CapabilityInitializers.fan,
+    "Speaker": CapabilityInitializers.speaker,
+    // "Tamper Alert",
+    // "Alarm",
+    "Alarm System Status": CapabilityInitializers.alarm_system,
+    "Mode": CapabilityInitializers.virtual_mode,
+    "Routine": CapabilityInitializers.virtual_routine,
     "Button": CapabilityInitializers.button,
     // Sonos Capabilities
-    "Audio Volume",
-    "Audio Mute"
+    // "Audio Volume",
+    // "Audio Mute"
 };
 
 module.exports = class CapabilityMap {
-    constructor(accessories, srvc, char) {
+    constructor(accessories, char) {
         this.platform = accessories;
         this.log = accessories.log;
         this.logConfig = accessories.logConfig;
-        this.temperature_unit = accessories.temperature_unit;
         this.accessories = accessories;
         this.client = accessories.client;
         this.myUtils = accessories.myUtils;
         this.CommunityTypes = accessories.CommunityTypes;
-        Service = srvc;
+        // Service = srvc;
         Characteristic = char;
         this.homebridge = accessories.homebridge;
     }
 
-    get knownCapabilities() {
+    getKnownCapabilities() {
         return Object.keys(capabilityMap);
     }
 
@@ -83,7 +81,6 @@ module.exports = class CapabilityMap {
         if (capabilityMap[name]) {
             return capabilityMap[name](accessory, serviceType);
         }
-
         return accessory;
     }
-}
+};
