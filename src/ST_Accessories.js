@@ -126,7 +126,7 @@ module.exports = class ST_Accessories {
             throw "Unable to determine the service type of " + accessory.deviceid;
         }
 
-        // This shouldn't be necessary any more.
+        // TODO: loadAccessoryData shouldn't be necessary any more.
         // return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
         return accessory;
     }

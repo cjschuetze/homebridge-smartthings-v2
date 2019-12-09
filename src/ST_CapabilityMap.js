@@ -49,6 +49,7 @@ module.exports = class CapabilityClass {
             "Thermostat Operating State": this.capInitializers.thermostat,
             "Fan": this.capInitializers.fan,
             "Speaker": this.capInitializers.speaker,
+            "Tamper Alert": this.capInitializers.tamper_sensor,
             // "Door",
             // "Window",
             // "Polling",
@@ -67,11 +68,11 @@ module.exports = class CapabilityClass {
             // "Fan Speed",
             // "Fan Control",
             // "Fan Light",
-            // "Tamper Alert",
+
             // "Alarm",
             // Sonos Capabilities
             // "Audio Volume",
-            // "Audio Mute"
+            "Audio Mute"
         };
     };
 

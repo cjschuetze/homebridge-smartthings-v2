@@ -21,6 +21,10 @@ module.exports = class CharacteristicsClass {
         return accessory;
     }
 
+    audio_mute(accessory, service) {
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Mute, 'mute');
+    }
+
 
     battery(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.BatteryLevel, 'battery');
@@ -45,11 +49,6 @@ module.exports = class CharacteristicsClass {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement', { charName: 'Carbon Dioxide Detected' });
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideLevel, 'carbonDioxideMeasurement');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
         accessory.context.deviceGroups.push("carbon_dioxide");
         return accessory;
@@ -58,10 +57,6 @@ module.exports = class CharacteristicsClass {
     carbon_monoxide(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide', { charName: 'Carbon Monoxide Detected' });
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
         accessory.context.deviceGroups.push("carbon_monoxide");
         return accessory;
@@ -70,10 +65,6 @@ module.exports = class CharacteristicsClass {
     contact_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.ContactSensorState, 'contact');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
         accessory.context.deviceGroups.push("contact_sensor");
         return accessory;
@@ -114,10 +105,6 @@ module.exports = class CharacteristicsClass {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentRelativeHumidity, 'humidity');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
         accessory.context.deviceGroups.push("humidity_sensor");
         return accessory;
@@ -126,8 +113,6 @@ module.exports = class CharacteristicsClass {
     illuminance_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentAmbientLightLevel, 'illuminance');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
 
         accessory.context.deviceGroups.push("illuminance_sensor");
         return accessory;
@@ -167,8 +152,6 @@ module.exports = class CharacteristicsClass {
     motion_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.MotionDetected, 'motion');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
         if (accessory.hasCapability('Tamper Alert'))
             accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
@@ -241,7 +224,6 @@ module.exports = class CharacteristicsClass {
             }
         }
 
-        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Mute, 'mute');
         accessory.context.deviceGroups.push("sonos_speaker");
         return accessory;
     }
@@ -265,7 +247,6 @@ module.exports = class CharacteristicsClass {
         } else {
             this.getOrAddService(service).getCharacteristic(Characteristic.Volume).updateValue(parseInt(accessory.context.deviceData.attributes.level || accessory.context.deviceData.attributes.volume || 0));
         }
-        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.Mute, 'mute');
 
         accessory.context.deviceGroups.push("speaker_device");
         return accessory;
@@ -278,6 +259,11 @@ module.exports = class CharacteristicsClass {
         return accessory;
     }
 
+    tamper_sensor(accessory, service) {
+        if (accessory.hasCapability('Tamper Alert'))
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
+    }
+
     temperature_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.CurrentTemperature, 'temperature', {
             props: {
@@ -285,11 +271,6 @@ module.exports = class CharacteristicsClass {
                 maxValue: this.myUtils.tempConversion(90),
             }
         });
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
-
         accessory.context.deviceGroups.push("temperature_sensor");
         return accessory;
     }
@@ -562,10 +543,6 @@ module.exports = class CharacteristicsClass {
     water_sensor(accessory, service) {
         accessory.manageGetCharacteristic(accessory, service, Characteristic.LeakDetected, 'water');
         accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusActive, 'status');
-        if (accessory.hasCapability('Battery'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        if (accessory.hasCapability('Tamper Alert'))
-            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
 
         accessory.deviceGroups.push("window_shade");
         return accessory;
