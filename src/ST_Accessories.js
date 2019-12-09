@@ -128,7 +128,9 @@ module.exports = class ST_Accessories {
             throw "Unable to determine the service type of " + accessory.deviceid;
         }
 
-        return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
+        // This shouldn't be necessary any more.
+        // return this.loadAccessoryData(accessory, accessory.context.deviceData) || accessory;
+        return accessory;
     }
 
 
@@ -186,65 +188,35 @@ module.exports = class ST_Accessories {
         });
     }
 
-    manageGetCharacteristic(svc, char, attr, props = undefined, evtOnly = undefined) {
+    manageGetCharacteristic(svc, char, attr, getFunc = undefined, props = undefined, evtOnly = undefined) {
         if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                });
+            let c = this.getOrAddService(svc).getCharacteristic(char);
+            c.on("get", getFunc ? getFunc : (callback) => {
+                callback(null, this.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            });
             if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
+            if (evtOnly !== undefined) c.eventOnlyCharacteristic = evtOnly;
+            c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
         } else {
             this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
         }
     }
 
-    manageGetSetCharacteristic(svc, char, attr, props = undefined, evtOnly = undefined) {
+    manageGetSetCharacteristic(svc, char, attr, getFunc = undefined, setFunc = undefined, props = undefined, evtOnly = undefined) {
         if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, this.transformCommandValue(attr, value));
-                });
+            let c = this.getOrAddService(svc).getCharacteristic(char);
+            c.on("get", (getFunc !== undefined) ? getFunc : (callback) => {
+                callback(null, this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
+            });
+            c.on("set", (setFunc !== undefined) ? setFunc : (value, callback) => {
+                this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, this.transformCommandValue(attr, value));
+            });
             if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
+            if (evtOnly !== undefined) c.eventOnlyCharacteristic = evtOnly;
+            c.getValue();
             this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        } else {
-            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-        }
-    }
 
-    func_manageGetCharacteristic(svc, char, attr, getFunc, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", getFunc);
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        } else {
-            this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-        }
-    }
-
-    func_manageGetSetCharacteristic(svc, char, attr, getFunc, setFunc, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", getFunc)
-                .on("set", setFunc);
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
         } else {
             this.getOrAddService(svc).getCharacteristic(char).updateValue(this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
         }

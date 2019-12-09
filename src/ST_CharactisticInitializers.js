@@ -32,7 +32,7 @@ module.exports = class CharacteristicsClass {
 
 
     button(accessory, service) {
-        accessory.func_manageGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', (callback) => {
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', (callback) => {
             // Reset value to force `change` to fire for repeated presses
             this.value = -1;
             callback(null, this.accessories.transformAttributeState('button', accessory.context.deviceData.attributes.button));
