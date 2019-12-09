@@ -13,83 +13,9 @@ module.exports = class CharacteristicsClass {
         this.homebridge = accessories.homebridge;
     }
 
-    createGetCharacteristic(svc, char, attr, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        }
-    }
-
-    createGetSetCharacteristic(svc, char, attr, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, this.transformCommandValue(attr, value));
-                });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        }
-    }
-
-    func_createGetCharacteristic(svc, char, attr, getFunc, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        }
-    }
-
-    func_createGetSetCharacteristic(svc, char, attr, getFunc, setFunc, props = undefined, evtOnly = undefined) {
-        if (!this.hasCharacteristic(svc, char)) {
-            let c = this
-                .getOrAddService(svc)
-                .getCharacteristic(char)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState(attr, this.context.deviceData.attributes[attr]));
-                })
-                .on("set", (value, callback) => {
-                    this.client.sendDeviceCommand(callback, this.context.deviceData.deviceid, this.transformCommandValue(attr, value));
-                });
-            if (props && Object.keys(props).length) c.setProps(props);
-            if (evtOnly) c.eventOnlyCharacteristic = evtOnly;
-            this.storeCharacteristicItem(attr, this.context.deviceData.deviceid, c);
-        }
-    }
-
-    // eslint-disable-next-line no-unused-vars
-    initializeCharacteristic(svc, char) {
-
-    }
-
-    // eslint-disable-next-line no-unused-vars
-    updateCharacteristic(accessory, svc, char, newValue) {
-        accessory.updateCharacteristicVal(svc, char, newValue);
-    }
-
-
-    /********************************************************************************************************************** */
     alarm_system(accessory, service) {
-        accessory.createGetCharacteristic(accessory, service, Characteristic.SecuritySystemCurrentState, 'alarmSystemStatus');
-        accessory.createGetSetCharacteristic(accessory, service, Characteristic.SecuritySystemTargetState, 'alarmSystemStatus');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.SecuritySystemCurrentState, 'alarmSystemStatus');
+        accessory.manageGetSetCharacteristic(accessory, service, Characteristic.SecuritySystemTargetState, 'alarmSystemStatus');
 
         accessory.context.deviceGroups.push("alarm_system");
         return accessory;
@@ -97,50 +23,32 @@ module.exports = class CharacteristicsClass {
 
 
     battery(accessory, service) {
-        accessory.createGetCharacteristic(accessory, service, Characteristic.BatteryLevel, 'battery');
-        accessory.createGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
-        accessory.createGetCharacteristic(accessory, service, Characteristic.ChargingState, 'batteryStatus');
-
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.BatteryLevel, 'battery');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusLowBattery, 'battery');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.ChargingState, 'batteryStatus');
         accessory.context.deviceGroups.push("battery");
         return accessory;
     }
 
 
     button(accessory, service) {
-        accessory.func_createGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', (callback) => {
+        accessory.func_manageGetCharacteristic(accessory, service, Characteristic.ProgrammableSwitchEvent, 'button', (callback) => {
             // Reset value to force `change` to fire for repeated presses
             this.value = -1;
             callback(null, this.accessories.transformAttributeState('button', accessory.context.deviceData.attributes.button));
         }, {
             validValues: this.accessories.transformAttributeState('supportedButtonValues', accessory.context.deviceData.attributes.supportedButtonValues)
         }, false);
-
-        // let thisChar;
-        // if (!accessory.hasCharacteristic(service, Characteristic.ProgrammableSwitchEvent)) {
-        //     thisChar = accessory
-        //         .getOrAddService(service)
-        //         .getCharacteristic(Characteristic.ProgrammableSwitchEvent)
-        //         .setProps({
-        //             validValues: this.accessories.transformAttributeState('supportedButtonValues', accessory.context.deviceData.attributes.supportedButtonValues)
-        //         })
-        //         .on("get", (callback) => {
-        //             // Reset value to force `change` to fire for repeated presses
-        //             this.value = -1;
-        //             callback(null, this.accessories.transformAttributeState('button', accessory.context.deviceData.attributes.button));
-        //         });
-        //     // Turned on by default for Characteristic.ProgrammableSwitchEvent, required to emit `change`
-        //     thisChar.eventOnlyCharacteristic = false;
-        //     this.accessories.storeCharacteristicItem("button", accessory.context.deviceData.deviceid, thisChar);
-        // }
+        accessory.context.deviceGroups.push("button");
         return accessory;
     }
 
     carbon_dioxide(accessory, service) {
-        accessory.createGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement');
-        accessory.createGetCharacteristic(accessory, service, Characteristic.CarbonDioxideLevel, 'carbonDioxideMeasurement');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideDetected, 'carbonDioxideMeasurement');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonDioxideLevel, 'carbonDioxideMeasurement');
 
         if (accessory.hasCapability('Tamper Alert')) {
-            accessory.createGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
 
         accessory.context.deviceGroups.push("carbon_dioxide");
@@ -148,9 +56,9 @@ module.exports = class CharacteristicsClass {
     }
 
     carbon_monoxide(accessory, service) {
-        accessory.createGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.CarbonMonoxideDetected, 'carbonMonoxide');
         if (accessory.hasCapability('Tamper Alert') && !accessory.hasCharacteristic(service, Characteristic.StatusTampered)) {
-            accessory.createGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
 
         accessory.context.deviceGroups.push("carbon_monoxide");
@@ -158,25 +66,17 @@ module.exports = class CharacteristicsClass {
     }
 
     contact_sensor(accessory, service) {
-        accessory.createGetCharacteristic(accessory, service, Characteristic.ContactSensorState, 'contact');
+        accessory.manageGetCharacteristic(accessory, service, Characteristic.ContactSensorState, 'contact');
         if (accessory.hasCapability('Tamper Alert') && !accessory.hasCharacteristic(service, Characteristic.StatusTampered)) {
-            accessory.createGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
+            accessory.manageGetCharacteristic(accessory, service, Characteristic.StatusTampered, 'tamper');
         }
+
         accessory.context.deviceGroups.push("contact_sensor");
         return accessory;
     }
 
     energy_meter(accessory, service) {
-        let thisChar;
-        if (!accessory.hasCharacteristic(service, Characteristic.KilowattHours)) {
-            thisChar = accessory
-                .getOrAddService(service)
-                .addCharacteristic(this.CommunityTypes.KilowattHours)
-                .on("get", (callback) => {
-                    callback(null, this.accessories.transformAttributeState('energy', accessory.context.deviceData.attributes.energy));
-                });
-            this.accessories.storeCharacteristicItem("energy", accessory.context.deviceData.deviceid, thisChar);
-        }
+        accessory.manageGetCharacteristic(accessory, service, this.CommunityTypes.KilowattHours, 'energy');
 
         accessory.context.deviceGroups.push("energy_meter");
         return accessory;
