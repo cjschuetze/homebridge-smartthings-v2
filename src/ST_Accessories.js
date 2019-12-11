@@ -376,7 +376,7 @@ module.exports = class ST_Accessories {
                         return Characteristic.TargetHeatingCoolingState.OFF;
                 }
             case "alarmSystemStatus":
-                return this.myUtils.convertAlarmState(val, true);
+                return this.myUtils.convertAlarmState(val);
 
             default:
                 return val;
@@ -403,8 +403,6 @@ module.exports = class ST_Accessories {
                 return (val === 1 || val === true) ? "lock" : "unlock";
             case "mute":
                 return (val === "muted") ? "mute" : "unmute";
-            case "alarmSystemStatus":
-                return this.myUtils.convertAlarmState(val);
             case "fanSpeed":
                 return "setFanSpeed";
             case "level":
@@ -438,7 +436,7 @@ module.exports = class ST_Accessories {
             case "mute":
                 return (val === "muted") ? "mute" : "unmute";
             case "alarmSystemStatus":
-                return this.myUtils.convertAlarmState(val, false, Characteristic);
+                return this.myUtils.convertAlarmCmd(val, false, Characteristic);
             case "fanSpeed":
                 if (val === 0) {
                     return 0;
