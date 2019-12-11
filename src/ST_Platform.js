@@ -39,7 +39,7 @@ module.exports = class ST_Platform {
         this.excludedAttributes = this.config["excluded_attributes"] || [];
         this.excludedCapabilities = this.config["excluded_capabilities"] || [];
         this.update_method = this.config["update_method"] || "direct";
-        this.temperature_unit = 'F';
+        this.temperature_unit = this.config["temperature_unit"] || 'F';
         this.local_commands = false;
         this.local_hub_ip = undefined;
         this.myUtils = new myUtils(this);
@@ -53,14 +53,6 @@ module.exports = class ST_Platform {
             .then((res) => {
                 this.client.sendUpdateStatus(res);
             });
-    }
-
-    setTempUnit(unit) {
-        this.temperature_unit = unit;
-    }
-
-    getTempUnit() {
-        return this.temperature_unit;
     }
 
     getLogConfig() {
@@ -87,6 +79,15 @@ module.exports = class ST_Platform {
             direct_ip: this.config.direct_ip || this.myUtils.getIPAddress(),
             debug: (this.config.debug === true)
         };
+    }
+
+    updateTempUnit(unit) {
+        this.log.notice(`Setting Temperature Unit to: (${unit})`);
+        this.temperature_unit = unit;
+    }
+
+    getTempUnit() {
+        return this.temperature_unit;
     }
 
     didFinishLaunching() {
@@ -118,6 +119,14 @@ module.exports = class ST_Platform {
                         reject(err.message);
                     })
                     .then(resp => {
+                        if (resp && resp.location) {
+                            that.updateTempUnit(resp.location.temperature_scale);
+                            if (resp.location.hubIP) {
+                                that.local_hub_ip = resp.location.hubIP;
+                                that.local_commands = resp.location.local_commands === true;
+                                that.client.updateGlobals(that.local_hub_ip, that.local_commands);
+                            }
+                        }
                         if (resp && resp.deviceList && resp.deviceList instanceof Array) {
                             // that.log.debug("Received All Device Data");
                             const toCreate = this.SmartThingsAccessories.diffAdd(resp.deviceList);
@@ -131,14 +140,7 @@ module.exports = class ST_Platform {
                             toUpdate.forEach(device => this.updateDevice(device));
                             toCreate.forEach(device => this.addDevice(device));
                         }
-                        if (resp && resp.location) {
-                            that.temperature_unit = resp.location.temperature_scale;
-                            if (resp.location.hubIP) {
-                                that.local_hub_ip = resp.location.hubIP;
-                                that.local_commands = resp.location.local_commands === true;
-                                that.client.updateGlobals(that.local_hub_ip, that.local_commands);
-                            }
-                        }
+
                         that.log.alert(`Total Initialization Time: (${Math.round((new Date() - starttime) / 1000)} seconds)`);
                         that.log.notice(`Unknown Capabilities: ${JSON.stringify(that.unknownCapabilities)}`);
                         that.log.info(`${platformDesc} DeviceCache Size: (${Object.keys(this.SmartThingsAccessories.getAllAccessoriesFromCache()).length})`);
